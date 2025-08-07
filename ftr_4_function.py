@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def percent_change_pateint_nf(data, new_record):
+def percent_change_patient_nf(data, new_record):
     # تبدیل تاریخ به datetime اگر لازم باشد
     new_record['Adm_date'] = pd.to_datetime(new_record['Adm_date'])
 

@@ -5,7 +5,7 @@ import jdatetime
 from datetime import datetime  
 
 # تابعی برای تبدیل تاریخ شمسی به میلادی  
-def convert_to_gregorian(date_str):  
+def shamsi_to_miladi(date_str):  
     if pd.isnull(date_str):  
         return None  
     return jdatetime.datetime.strptime(date_str, "%Y/%m/%d").togregorian()  

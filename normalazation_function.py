@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-def normalazation_nf(df1, df2):
+def normalize_features(df1, df2):
     # مرحله 1: ادغام مجموعه داده‌ها
     full_data = pd.concat([df1, df2], ignore_index=True)
     

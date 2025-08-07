@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def percent_difference_service_nf(data, new_record):
+def percent_difference_nf(data, new_record):
     # تبدیل تاریخ به datetime اگر لازم باشد
     new_record['Adm_date'] = pd.to_datetime(new_record['Adm_date'])
 
