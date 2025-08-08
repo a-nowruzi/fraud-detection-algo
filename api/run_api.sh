@@ -21,8 +21,8 @@ if [ ! -f "app.py" ]; then
     exit 1
 fi
 
-if [ ! -f "DataSEt_FD7.CSV" ]; then
-    echo "❌ خطا: فایل DataSEt_FD7.CSV یافت نشد!"
+if [ ! -f "DataSEt_FD7.csv" ]; then
+    echo "❌ خطا: فایل DataSEt_FD7.csv یافت نشد!"
     exit 1
 fi
 

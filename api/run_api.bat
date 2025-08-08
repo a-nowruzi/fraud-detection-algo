@@ -24,8 +24,8 @@ if not exist "app.py" (
     exit /b 1
 )
 
-if not exist "DataSEt_FD7.CSV" (
-    echo ❌ خطا: فایل DataSEt_FD7.CSV یافت نشد!
+if not exist "DataSEt_FD7.csv" (
+    echo ❌ خطا: فایل DataSEt_FD7.csv یافت نشد!
     pause
     exit /b 1
 )

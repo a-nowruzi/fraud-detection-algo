@@ -87,7 +87,7 @@ def load_and_prepare_data():
     global data, clf, scaler, data_final
     
     print("Loading dataset...")
-    data = pd.read_csv('DataSEt_FD7.CSV')
+    data = pd.read_csv('DataSEt_FD7.csv')
     
     # Remove commas and spaces
     data['cost_amount'] = data['cost_amount'].str.replace(',', '').str.strip()
