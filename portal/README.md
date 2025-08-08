@@ -1,69 +1,161 @@
-# React + TypeScript + Vite
+# سیستم تشخیص تقلب پزشکی - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+این پروژه رابط کاربری وب برای سیستم تشخیص تقلب پزشکی است که با React و TypeScript ساخته شده است.
 
-Currently, two official plugins are available:
+## ویژگی‌ها
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 🔍 **تشخیص تقلب**: فرم ورود اطلاعات نسخه و نمایش نتیجه تشخیص
+- 📊 **نمودارهای تحلیلی**: گالری نمودارهای مختلف برای تحلیل داده‌ها
+- 📈 **آمار سیستم**: داشبورد آمار کلی و عملکرد سیستم
+- 🎨 **رابط کاربری فارسی**: طراحی زیبا و کاربرپسند با پشتیبانی کامل از زبان فارسی
+- 📱 **واکنش‌گرا**: سازگار با تمام دستگاه‌ها و اندازه‌های صفحه
 
-## Expanding the ESLint configuration
+## پیش‌نیازها
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Node.js (نسخه 16 یا بالاتر)
+- npm یا yarn
+- Backend API (پروژه `api/`)
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## نصب و راه‌اندازی
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+### 1. نصب وابستگی‌ها
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+# یا
+yarn install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. راه‌اندازی Backend
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+قبل از اجرای frontend، ابتدا backend را راه‌اندازی کنید:
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cd ../api
+python app.py
 ```
+
+Backend روی پورت 5000 اجرا می‌شود.
+
+### 3. اجرای Frontend
+
+```bash
+npm run dev
+# یا
+yarn dev
+```
+
+Frontend روی پورت 5173 اجرا می‌شود و در مرورگر در آدرس `http://localhost:5173` قابل دسترسی است.
+
+## ساختار پروژه
+
+```
+portal/
+├── src/
+│   ├── components/          # کامپوننت‌های قابل استفاده مجدد
+│   │   ├── Layout.tsx      # ساختار کلی صفحه
+│   │   ├── PredictionForm.tsx  # فرم تشخیص تقلب
+│   │   ├── StatsDashboard.tsx  # داشبورد آمار
+│   │   └── ChartsGallery.tsx   # گالری نمودارها
+│   ├── pages/              # صفحه‌های اصلی
+│   │   ├── Dashboard.tsx   # صفحه اصلی
+│   │   ├── PredictPage.tsx # صفحه تشخیص تقلب
+│   │   ├── ChartsPage.tsx  # صفحه نمودارها
+│   │   └── StatsPage.tsx   # صفحه آمار
+│   ├── services/           # سرویس‌های API
+│   │   └── api.ts         # تعریف API endpoints
+│   ├── App.tsx            # کامپوننت اصلی
+│   └── main.tsx           # نقطه ورود
+├── public/                # فایل‌های استاتیک
+├── package.json           # وابستگی‌ها و اسکریپت‌ها
+├── tailwind.config.js     # پیکربندی Tailwind CSS
+└── README.md             # مستندات
+```
+
+## صفحات اصلی
+
+### 1. داشبورد (`/`)
+- معرفی سیستم و ویژگی‌ها
+- دسترسی سریع به امکانات
+- آمار کلی
+
+### 2. تشخیص تقلب (`/predict`)
+- فرم ورود اطلاعات نسخه پزشکی
+- نمایش نتیجه تشخیص
+- شاخص‌های ریسک
+
+### 3. نمودارها (`/charts`)
+- گالری نمودارهای تحلیلی
+- دسته‌بندی نمودارها
+- پیش‌نمایش نمودارها
+
+### 4. آمار سیستم (`/stats`)
+- آمار کلی سیستم
+- اطلاعات مدل
+- نسبت‌ها و درصدها
+
+## API Endpoints
+
+Frontend با این endpoints از backend ارتباط برقرار می‌کند:
+
+- `POST /predict` - تشخیص تقلب
+- `GET /stats` - آمار سیستم
+- `GET /health` - بررسی سلامت
+- `GET /charts/*` - نمودارهای مختلف
+
+## تکنولوژی‌های استفاده شده
+
+- **React 19** - کتابخانه UI
+- **TypeScript** - زبان برنامه‌نویسی
+- **Vite** - ابزار build
+- **Tailwind CSS** - فریم‌ورک CSS
+- **React Router** - مدیریت routing
+- **Axios** - HTTP client
+- **Lucide React** - آیکون‌ها
+
+## توسعه
+
+### ساخت نسخه تولید
+
+```bash
+npm run build
+# یا
+yarn build
+```
+
+### بررسی کد
+
+```bash
+npm run lint
+# یا
+yarn lint
+```
+
+### پیش‌نمایش نسخه تولید
+
+```bash
+npm run preview
+# یا
+yarn preview
+```
+
+## نکات مهم
+
+1. **Backend ضروری است**: Frontend بدون backend کار نمی‌کند
+2. **CORS**: Backend باید CORS را برای `http://localhost:5173` فعال کند
+3. **فونت فارسی**: از فونت Vazirmatn برای نمایش بهتر متون فارسی استفاده می‌شود
+4. **Responsive**: تمام صفحات برای موبایل و دسکتاپ بهینه شده‌اند
+
+## عیب‌یابی
+
+### خطای اتصال به API
+- مطمئن شوید backend روی پورت 5000 اجرا می‌شود
+- بررسی کنید که CORS در backend فعال باشد
+
+### خطای نصب وابستگی‌ها
+- Node.js را به‌روزرسانی کنید
+- پوشه `node_modules` را حذف کرده و دوباره نصب کنید
+
+### خطای TypeScript
+- فایل‌های `.ts` و `.tsx` را بررسی کنید
+- از `npm run lint` برای یافتن خطاها استفاده کنید

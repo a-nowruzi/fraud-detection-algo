@@ -1,0 +1,246 @@
+import React, { useState } from 'react';
+import { apiService } from '../services/api';
+import { BarChart3, PieChart, TrendingUp, MapPin, Users, Calendar, CreditCard, FileText } from 'lucide-react';
+
+const ChartsGallery: React.FC = () => {
+  const [selectedChart, setSelectedChart] = useState<string | null>(null);
+  const [chartData, setChartData] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const charts = [
+    {
+      id: 'fraud-by-province',
+      title: 'تقلب بر اساس استان',
+      description: 'نمودار میله‌ای از تعداد نسخه‌های تقلبی در هر استان',
+      icon: MapPin,
+      category: 'جغرافیایی',
+    },
+    {
+      id: 'fraud-by-gender',
+      title: 'تقلب بر اساس جنسیت',
+      description: 'نمودار دایره‌ای از نسبت نسخه‌های تقلبی بر اساس جنسیت',
+      icon: Users,
+      category: 'جمعیت‌شناسی',
+    },
+    {
+      id: 'fraud-by-age',
+      title: 'تقلب بر اساس گروه سنی',
+      description: 'نمودار دایره‌ای از نسبت نسخه‌های تقلبی بر اساس گروه سنی',
+      icon: Users,
+      category: 'جمعیت‌شناسی',
+    },
+    {
+      id: 'fraud-ratio-by-age-group',
+      title: 'نسبت تقلب بر اساس گروه سنی',
+      description: 'نمودار میله‌ای از نسبت نسخه‌های تقلبی در هر گروه سنی',
+      icon: BarChart3,
+      category: 'جمعیت‌شناسی',
+    },
+    {
+      id: 'province-fraud-ratio',
+      title: 'نسبت تقلب بر اساس استان',
+      description: 'نمودار میله‌ای از نسبت نسخه‌های تقلبی در هر استان',
+      icon: MapPin,
+      category: 'جغرافیایی',
+    },
+    {
+      id: 'province-gender-fraud-percentage',
+      title: 'درصد تقلب بر اساس استان و جنسیت',
+      description: 'نمودار میله‌ای از درصد نسخه‌های تقلبی در هر استان بر حسب جنسیت',
+      icon: BarChart3,
+      category: 'تحلیلی',
+    },
+    {
+      id: 'fraud-counts-by-date',
+      title: 'تعداد تقلب بر اساس تاریخ',
+      description: 'نمودار خطی از تعداد نسخه‌های تقلبی بر حسب تاریخ پذیرش',
+      icon: Calendar,
+      category: 'زمانی',
+    },
+    {
+      id: 'fraud-ratio-by-date',
+      title: 'نسبت تقلب بر اساس تاریخ',
+      description: 'نمودار خطی از نسبت نسخه‌های تقلبی بر حسب تاریخ پذیرش',
+      icon: TrendingUp,
+      category: 'زمانی',
+    },
+    {
+      id: 'fraud-ratio-by-ins-cover',
+      title: 'نسبت تقلب بر اساس پوشش بیمه',
+      description: 'نمودار میله‌ای از نسبت نسخه‌های تقلبی بر اساس نوع پوشش بیمه',
+      icon: CreditCard,
+      category: 'بیمه',
+    },
+    {
+      id: 'fraud-ratio-by-invoice-type',
+      title: 'نسبت تقلب بر اساس نوع فاکتور',
+      description: 'نمودار میله‌ای از نسبت نسخه‌های تقلبی بر اساس نوع فاکتور',
+      icon: FileText,
+      category: 'اداری',
+    },
+    {
+      id: 'fraud-ratio-by-medical-record-type',
+      title: 'نسبت تقلب بر اساس نوع پرونده',
+      description: 'نمودار میله‌ای از نسبت نسخه‌های تقلبی بر اساس نوع پرونده پزشکی',
+      icon: FileText,
+      category: 'اداری',
+    },
+  ];
+
+  const fetchChart = async (chartId: string) => {
+    setLoading(true);
+    setError(null);
+    setSelectedChart(chartId);
+
+    try {
+      let response;
+      switch (chartId) {
+        case 'fraud-by-province':
+          response = await apiService.getFraudByProvinceChart();
+          break;
+        case 'fraud-by-gender':
+          response = await apiService.getFraudByGenderChart();
+          break;
+        case 'fraud-by-age':
+          response = await apiService.getFraudByAgeChart();
+          break;
+        case 'fraud-ratio-by-age-group':
+          response = await apiService.getFraudRatioByAgeGroupChart();
+          break;
+        case 'province-fraud-ratio':
+          response = await apiService.getProvinceFraudRatioChart();
+          break;
+        case 'province-gender-fraud-percentage':
+          response = await apiService.getProvinceGenderFraudPercentageChart();
+          break;
+        case 'fraud-counts-by-date':
+          response = await apiService.getFraudCountsByDateChart();
+          break;
+        case 'fraud-ratio-by-date':
+          response = await apiService.getFraudRatioByDateChart();
+          break;
+        case 'fraud-ratio-by-ins-cover':
+          response = await apiService.getFraudRatioByInsCoverChart();
+          break;
+        case 'fraud-ratio-by-invoice-type':
+          response = await apiService.getFraudRatioByInvoiceTypeChart();
+          break;
+        case 'fraud-ratio-by-medical-record-type':
+          response = await apiService.getFraudRatioByMedicalRecordTypeChart();
+          break;
+        default:
+          throw new Error('نمودار مورد نظر یافت نشد');
+      }
+      setChartData(response.chart);
+    } catch (err) {
+      setError('خطا در دریافت نمودار');
+      console.error('Chart error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const categories = Array.from(new Set(charts.map(chart => chart.category)));
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">گالری نمودارها</h2>
+        <p className="text-gray-600">انتخاب کنید و نمودارهای تحلیلی مختلف را مشاهده کنید</p>
+      </div>
+
+      {/* فیلتر دسته‌بندی */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setSelectedChart(null)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            !selectedChart
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          همه
+        </button>
+        {categories.map(category => (
+          <button
+            key={category}
+            onClick={() => setSelectedChart(null)}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* لیست نمودارها */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">نمودارهای موجود</h3>
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {charts.map(chart => (
+              <div
+                key={chart.id}
+                onClick={() => fetchChart(chart.id)}
+                className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                  selectedChart === chart.id
+                    ? 'border-primary-500 bg-primary-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-start">
+                  <chart.icon className="h-5 w-5 text-gray-500 mt-0.5 ml-3" />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900">{chart.title}</h4>
+                    <p className="text-sm text-gray-600 mt-1">{chart.description}</p>
+                    <span className="inline-block mt-2 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
+                      {chart.category}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* نمایش نمودار */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">پیش‌نمایش نمودار</h3>
+          <div className="bg-white rounded-lg border border-gray-200 p-4 min-h-96 flex items-center justify-center">
+            {loading ? (
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">در حال بارگذاری نمودار...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center">
+                <div className="text-red-600 mb-4">{error}</div>
+                <button
+                  onClick={() => selectedChart && fetchChart(selectedChart)}
+                  className="btn-primary"
+                >
+                  تلاش مجدد
+                </button>
+              </div>
+            ) : chartData ? (
+              <div className="w-full">
+                <img
+                  src={`data:image/png;base64,${chartData}`}
+                  alt="نمودار"
+                  className="w-full h-auto rounded-lg shadow-sm"
+                />
+              </div>
+            ) : (
+              <div className="text-center text-gray-500">
+                <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>برای مشاهده نمودار، یکی از موارد بالا را انتخاب کنید</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ChartsGallery;
