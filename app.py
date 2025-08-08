@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
+from flasgger import Swagger
 import pandas as pd
 import numpy as np
 import warnings
@@ -39,6 +40,41 @@ pd.set_option('display.max_rows', 100)
 
 app = Flask(__name__)
 CORS(app)
+
+# Initialize Swagger (OpenAPI) UI at /docs
+swagger_template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "Medical Fraud Detection API",
+        "description": "API for detecting fraudulent medical prescriptions. برای مشاهده مستندات تعاملی به مسیر /docs مراجعه کنید.",
+        "version": "1.0.0"
+    },
+    "basePath": "/",
+    "schemes": ["http"],
+    "consumes": ["application/json"],
+    "produces": ["application/json"]
+}
+
+# Swagger UI configuration
+app.config['SWAGGER'] = {
+    'title': 'Medical Fraud Detection API',
+    'uiversion': 3,
+}
+
+swagger = Swagger(app, template=swagger_template, config={
+    'headers': [],
+    'specs': [
+        {
+            'endpoint': 'apispec_1',
+            'route': '/apispec_1.json',
+            'rule_filter': lambda rule: True,
+            'model_filter': lambda tag: True,
+        }
+    ],
+    'static_url_path': '/flasgger_static',
+    'swagger_ui': True,
+    'specs_route': '/docs/'
+})
 
 # Global variables for model and data
 data = None
@@ -233,7 +269,7 @@ def train_model():
                 'percent_diff_spe', 'percent_diff_spe2', 'percent_diff_ser_patient', 
                 'percent_diff_serv', 'Ratio']
     
-    # Create final dataset
+    # Create final dataset with features (preserve indices for alignment)
     data_final = data[features].copy()
     data_final.dropna(inplace=True)
     
@@ -250,6 +286,20 @@ def train_model():
         random_state=42
     )
     clf.fit(X)
+
+    # Predict on training data and enrich data_final with metadata used by charts
+    y_pred = clf.predict(X)
+    data_final['prediction'] = y_pred
+
+    # Attach metadata columns aligned by original indices
+    meta_columns = [
+        'Adm_date', 'gender', 'age', 'Service', 'province',
+        'Ins_Cover', 'Invice-type', 'Type_Medical_Record',
+        'provider_name', 'ID'
+    ]
+    for col in meta_columns:
+        if col in data.columns:
+            data_final[col] = data.loc[data_final.index, col]
 
 def predict_new_prescription(prescription_data):
     """Predict fraud for a new prescription"""
@@ -374,6 +424,150 @@ def create_chart(chart_type, **kwargs):
         )
         plt.pie(ratios, labels=ratios.index, autopct='%.2f%%', startangle=90)
         plt.title('نسبت نسخه‌های تقلبی به نرمال بر اساس گروه سنی')
+
+    elif chart_type == 'fraud_ratio_by_age_group':
+        bins = [0, 4, 12, 19, 34, 49, 64, 100]
+        labels = ['نوزادان', 'کودکان', 'نوجوانان', 'جوانان', 'بزرگسالان', 'میانسالان', 'سالمندان']
+        data_final['age_group'] = pd.cut(data_final['age'], bins=bins, labels=labels, right=True)
+        counts = data_final.groupby(['age_group', 'prediction']).size().unstack(fill_value=0)
+        if 1 not in counts.columns:
+            counts[1] = 0
+        if -1 not in counts.columns:
+            counts[-1] = 0
+        ratio = (counts[-1] / (counts[1] + counts[-1])).dropna()
+        ratio.sort_values().plot(kind='bar')
+        plt.xlabel('گروه سنی')
+        plt.ylabel('نسبت نسخه‌های تقلبی به کل نسخه‌ها')
+        plt.title('نسبت نسخه‌های تقلبی به کل در هر گروه سنی')
+        plt.xticks(rotation=45)
+
+    elif chart_type == 'province_fraud_ratio':
+        counts = data_final.groupby(['province', 'prediction']).size().unstack(fill_value=0)
+        if 1 not in counts.columns:
+            counts[1] = 0
+        if -1 not in counts.columns:
+            counts[-1] = 0
+        fraud_ratio = (counts[-1] / (counts[1] + counts[-1])).sort_values(ascending=True)
+        fraud_ratio.plot(kind='bar')
+        plt.xlabel('استان')
+        plt.ylabel('نسبت نسخه‌های تقلبی به کل نسخه‌ها')
+        plt.title('نسبت نسخه‌های تقلبی به کل در هر استان')
+        plt.xticks(rotation=45)
+
+    elif chart_type == 'province_gender_fraud_percentage':
+        total_counts = data_final.groupby(['province', 'gender']).size().unstack(fill_value=0)
+        fraud_counts = data_final[data_final['prediction'] == -1].groupby(['province', 'gender']).size().unstack(fill_value=0)
+        percentage_fraud = (fraud_counts / total_counts * 100).fillna(0)
+        percentage_fraud.plot(kind='bar')
+        plt.title('درصد نسخه‌های تقلبی در هر استان بر حسب جنسیت')
+        plt.xlabel('استان‌ها')
+        plt.ylabel('درصد نسخه‌های تقلبی (%)')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+
+    elif chart_type == 'fraud_counts_by_date':
+        df = data_final.copy()
+        df['Adm_date'] = pd.to_datetime(df['Adm_date'])
+        fraud_by_date = df[df['prediction'] == -1].groupby('Adm_date').size()
+        ax = fraud_by_date.plot()
+        ax.set_xlabel('تاریخ پذیرش نسخه')
+        ax.set_ylabel('تعداد نسخه تقلبی')
+        ax.set_title('تعداد نسخه‌های تقلبی بر حسب تاریخ پذیرش')
+        ax.xaxis.set_major_locator(mdates.MonthLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+        plt.grid(True)
+
+    elif chart_type == 'fraud_ratio_by_date':
+        df = data_final.copy()
+        df['Adm_date'] = pd.to_datetime(df['Adm_date'])
+        fraud_counts = df[df['prediction'] == -1].groupby('Adm_date').size()
+        total_counts = df.groupby('Adm_date').size()
+        fraud_ratio = (fraud_counts / total_counts).fillna(0)
+        ax = fraud_ratio.plot()
+        ax.set_xlabel('تاریخ پذیرش نسخه')
+        ax.set_ylabel('نسبت نسخه تقلبی به کل نسخه‌ها')
+        ax.set_title('نسبت نسخه‌های تقلبی بر حسب تاریخ پذیرش')
+        ax.xaxis.set_major_locator(mdates.MonthLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+        plt.grid(True)
+
+    elif chart_type == 'fraud_ratio_by_ins_cover':
+        counts = data_final.groupby(['Ins_Cover', 'prediction']).size().unstack(fill_value=0)
+        if 1 not in counts.columns:
+            counts[1] = 0
+        if -1 not in counts.columns:
+            counts[-1] = 0
+        ratio = (counts[-1] / (counts[1] + counts[-1])).dropna()
+        ratio.sort_values().plot(kind='bar')
+        plt.xlabel('نوع پوشش')
+        plt.ylabel('نسبت نسخه‌های تقلبی به کل نسخه‌ها')
+        plt.title('نسبت نسخه‌های تقلبی به کل در هر پوشش')
+        plt.xticks(rotation=45)
+
+    elif chart_type == 'fraud_ratio_by_invoice_type':
+        col = 'Invice-type'
+        counts = data_final.groupby([col, 'prediction']).size().unstack(fill_value=0)
+        if 1 not in counts.columns:
+            counts[1] = 0
+        if -1 not in counts.columns:
+            counts[-1] = 0
+        ratio = (counts[-1] / (counts[1] + counts[-1])).dropna()
+        ratio.sort_values().plot(kind='bar')
+        plt.xlabel('نوع پوشش')
+        plt.ylabel('نسبت نسخه‌های تقلبی به کل نسخه‌ها')
+        plt.title('نسبت نسخه‌های تقلبی به کل در هر پوشش')
+        plt.xticks(rotation=45)
+
+    elif chart_type == 'fraud_ratio_by_medical_record_type':
+        col = 'Type_Medical_Record'
+        counts = data_final.groupby([col, 'prediction']).size().unstack(fill_value=0)
+        if 1 not in counts.columns:
+            counts[1] = 0
+        if -1 not in counts.columns:
+            counts[-1] = 0
+        ratio = (counts[-1] / (counts[1] + counts[-1])).dropna()
+        ratio.sort_values().plot(kind='bar')
+        plt.xlabel('نوع پرونده پزشکی')
+        plt.ylabel('نسبت نسخه‌های تقلبی به کل نسخه‌ها')
+        plt.title('نسبت نسخه‌های تقلبی به کل در هر نوع پرونده')
+        plt.xticks(rotation=45)
+
+    elif chart_type == 'provider_risk_indicator_time_series':
+        provider_name = kwargs.get('provider_name')
+        indicator = kwargs.get('indicator')
+        if provider_name is None or indicator is None:
+            raise ValueError('provider_name and indicator are required')
+        df = data_final.copy()
+        if indicator not in df.columns:
+            raise ValueError(f'Indicator {indicator} not found')
+        # compute z-score then CDF (0-100)
+        from scipy.stats import zscore, norm
+        df['risk_value'] = norm.cdf(zscore(df[indicator].astype(float))) * 100
+        df['Adm_date'] = pd.to_datetime(df['Adm_date'])
+        df = df[df['provider_name'] == provider_name].sort_values('Adm_date')
+        sns.lineplot(data=df, x='Adm_date', y='risk_value', marker='o')
+        plt.title(f'شاخص ریسک {indicator} برای پزشک {provider_name}')
+        plt.xlabel('تاریخ نسخه')
+        plt.ylabel('شاخص ریسک (0-100)')
+        plt.xticks(rotation=45)
+
+    elif chart_type == 'patient_risk_indicator_time_series':
+        patient_id = kwargs.get('patient_id')
+        indicator = kwargs.get('indicator')
+        if patient_id is None or indicator is None:
+            raise ValueError('patient_id and indicator are required')
+        df = data_final.copy()
+        if indicator not in df.columns:
+            raise ValueError(f'Indicator {indicator} not found')
+        from scipy.stats import zscore, norm
+        df['risk_value'] = norm.cdf(zscore(df[indicator].astype(float))) * 100
+        df['Adm_date'] = pd.to_datetime(df['Adm_date'])
+        df = df[df['ID'] == int(patient_id)].sort_values('Adm_date')
+        sns.lineplot(data=df, x='Adm_date', y='risk_value', marker='o')
+        plt.title(f'شاخص ریسک {indicator} برای بیمار {patient_id}')
+        plt.xlabel('تاریخ نسخه')
+        plt.ylabel('شاخص ریسک (0-100)')
+        plt.xticks(rotation=45)
     
     plt.tight_layout()
     
@@ -506,7 +700,69 @@ def home():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    """Predict fraud for a new prescription"""
+    """Predict fraud for a new prescription
+    ---
+    tags:
+      - Predictions
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required: [ID, jalali_date, Adm_date, Service, provider_name, provider_specialty, cost_amount]
+          properties:
+            ID:
+              type: integer
+              example: 48928
+            jalali_date:
+              type: string
+              description: Jalali date of birth in YYYY/MM/DD
+              example: "1361/05/04"
+            Adm_date:
+              type: string
+              description: Jalali admission date in YYYY/MM/DD
+              example: "1403/08/05"
+            Service:
+              type: string
+              example: "ویزیت متخصص"
+            provider_name:
+              type: string
+              example: "حسینخان خسروخاور"
+            provider_specialty:
+              type: string
+              example: "دکترای حرفه‌ای پزشکی"
+            cost_amount:
+              type: number
+              example: 2000000
+    responses:
+      200:
+        description: Prediction result
+        schema:
+          type: object
+          properties:
+            prediction:
+              type: integer
+              enum: [-1, 1]
+            score:
+              type: number
+            is_fraud:
+              type: boolean
+            risk_scores:
+              type: array
+              items:
+                type: number
+            features:
+              type: object
+      400:
+        description: Validation error
+      500:
+        description: Server error
+    """
     try:
         prescription_data = request.json
         
@@ -526,7 +782,24 @@ def predict():
 
 @app.route('/charts/fraud-by-province')
 def fraud_by_province_chart():
-    """Generate fraud by province chart"""
+    """Generate fraud by province chart
+    ---
+    tags:
+      - Charts
+    produces:
+      - application/json
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+        schema:
+          type: object
+          properties:
+            chart:
+              type: string
+              description: Base64 PNG image string
+      500:
+        description: Server error
+    """
     try:
         chart_data = create_chart('fraud_by_province')
         return jsonify({'chart': chart_data})
@@ -535,7 +808,24 @@ def fraud_by_province_chart():
 
 @app.route('/charts/fraud-by-gender')
 def fraud_by_gender_chart():
-    """Generate fraud by gender chart"""
+    """Generate fraud by gender chart
+    ---
+    tags:
+      - Charts
+    produces:
+      - application/json
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+        schema:
+          type: object
+          properties:
+            chart:
+              type: string
+              description: Base64 PNG image string
+      500:
+        description: Server error
+    """
     try:
         chart_data = create_chart('fraud_by_gender')
         return jsonify({'chart': chart_data})
@@ -544,7 +834,24 @@ def fraud_by_gender_chart():
 
 @app.route('/charts/fraud-by-age')
 def fraud_by_age_chart():
-    """Generate fraud by age group chart"""
+    """Generate fraud by age group chart
+    ---
+    tags:
+      - Charts
+    produces:
+      - application/json
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+        schema:
+          type: object
+          properties:
+            chart:
+              type: string
+              description: Base64 PNG image string
+      500:
+        description: Server error
+    """
     try:
         chart_data = create_chart('fraud_by_age_group')
         return jsonify({'chart': chart_data})
@@ -553,7 +860,49 @@ def fraud_by_age_chart():
 
 @app.route('/charts/risk-indicators', methods=['POST'])
 def risk_indicators_chart():
-    """Generate risk indicators chart for a prescription"""
+    """Generate risk indicators chart for a prescription
+    ---
+    tags:
+      - Charts
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required: [ID, jalali_date, Adm_date, Service, provider_name, provider_specialty, cost_amount]
+          properties:
+            ID:
+              type: integer
+            jalali_date:
+              type: string
+            Adm_date:
+              type: string
+            Service:
+              type: string
+            provider_name:
+              type: string
+            provider_specialty:
+              type: string
+            cost_amount:
+              type: number
+    responses:
+      200:
+        description: Chart and prediction
+        schema:
+          type: object
+          properties:
+            chart:
+              type: string
+            prediction:
+              type: object
+      500:
+        description: Server error
+    """
     try:
         prescription_data = request.json
         result = predict_new_prescription(prescription_data)
@@ -562,9 +911,51 @@ def risk_indicators_chart():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/charts/fraud-ratio-by-age-group')
+def fraud_ratio_by_age_group_chart():
+    """Fraud ratio by age group
+    ---
+    tags:
+      - Charts
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+    """
+    try:
+        chart_data = create_chart('fraud_ratio_by_age_group')
+        return jsonify({'chart': chart_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/stats')
 def get_stats():
-    """Get system statistics"""
+    """Get system statistics
+    ---
+    tags:
+      - System
+    produces:
+      - application/json
+    responses:
+      200:
+        description: Overall statistics
+        schema:
+          type: object
+          properties:
+            total_prescriptions:
+              type: integer
+            fraud_prescriptions:
+              type: integer
+            normal_prescriptions:
+              type: integer
+            fraud_percentage:
+              type: number
+            model_contamination:
+              type: number
+            features_count:
+              type: integer
+      500:
+        description: Server error
+    """
     try:
         if data_final is None:
             return jsonify({'error': 'داده‌ها بارگذاری نشده‌اند'}), 500
@@ -590,13 +981,201 @@ def get_stats():
 
 @app.route('/health')
 def health_check():
-    """Health check endpoint"""
+    """Health check endpoint
+    ---
+    tags:
+      - System
+    produces:
+      - application/json
+    responses:
+      200:
+        description: Health status
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+            model_loaded:
+              type: boolean
+            data_loaded:
+              type: boolean
+            timestamp:
+              type: string
+              format: date-time
+    """
     return jsonify({
         'status': 'healthy',
         'model_loaded': clf is not None,
         'data_loaded': data is not None,
         'timestamp': datetime.now().isoformat()
     })
+
+# Additional chart endpoints mapped from notebook analyses
+@app.route('/charts/province-fraud-ratio')
+def province_fraud_ratio_chart():
+    """Fraud ratio per province
+    ---
+    tags:
+      - Charts
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+    """
+    try:
+        chart_data = create_chart('province_fraud_ratio')
+        return jsonify({'chart': chart_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/charts/province-gender-fraud-percentage')
+def province_gender_fraud_percentage_chart():
+    """Fraud percentage by province and gender
+    ---
+    tags:
+      - Charts
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+    """
+    try:
+        chart_data = create_chart('province_gender_fraud_percentage')
+        return jsonify({'chart': chart_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/charts/fraud-counts-by-date')
+def fraud_counts_by_date_chart():
+    """Fraud counts over time (by admission date)
+    ---
+    tags:
+      - Charts
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+    """
+    try:
+        chart_data = create_chart('fraud_counts_by_date')
+        return jsonify({'chart': chart_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/charts/fraud-ratio-by-date')
+def fraud_ratio_by_date_chart():
+    """Fraud ratio over time (by admission date)
+    ---
+    tags:
+      - Charts
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+    """
+    try:
+        chart_data = create_chart('fraud_ratio_by_date')
+        return jsonify({'chart': chart_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/charts/fraud-ratio-by-ins-cover')
+def fraud_ratio_by_ins_cover_chart():
+    """Fraud ratio by insurance cover
+    ---
+    tags:
+      - Charts
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+    """
+    try:
+        chart_data = create_chart('fraud_ratio_by_ins_cover')
+        return jsonify({'chart': chart_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/charts/fraud-ratio-by-invoice-type')
+def fraud_ratio_by_invoice_type_chart():
+    """Fraud ratio by invoice type
+    ---
+    tags:
+      - Charts
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+    """
+    try:
+        chart_data = create_chart('fraud_ratio_by_invoice_type')
+        return jsonify({'chart': chart_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/charts/fraud-ratio-by-medical-record-type')
+def fraud_ratio_by_medical_record_type_chart():
+    """Fraud ratio by medical record type
+    ---
+    tags:
+      - Charts
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+    """
+    try:
+        chart_data = create_chart('fraud_ratio_by_medical_record_type')
+        return jsonify({'chart': chart_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/charts/provider-risk-indicator', methods=['GET'])
+def provider_risk_indicator_chart():
+    """Provider risk indicator over time
+    ---
+    tags:
+      - Charts
+    parameters:
+      - in: query
+        name: provider_name
+        type: string
+        required: true
+      - in: query
+        name: indicator
+        type: string
+        required: true
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+    """
+    try:
+        provider_name = request.args.get('provider_name')
+        indicator = request.args.get('indicator')
+        chart_data = create_chart('provider_risk_indicator_time_series', provider_name=provider_name, indicator=indicator)
+        return jsonify({'chart': chart_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/charts/patient-risk-indicator', methods=['GET'])
+def patient_risk_indicator_chart():
+    """Patient risk indicator over time
+    ---
+    tags:
+      - Charts
+    parameters:
+      - in: query
+        name: patient_id
+        type: integer
+        required: true
+      - in: query
+        name: indicator
+        type: string
+        required: true
+    responses:
+      200:
+        description: Base64-encoded PNG chart
+    """
+    try:
+        patient_id = request.args.get('patient_id')
+        indicator = request.args.get('indicator')
+        chart_data = create_chart('patient_risk_indicator_time_series', patient_id=patient_id, indicator=indicator)
+        return jsonify({'chart': chart_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("Loading data and training model...")
