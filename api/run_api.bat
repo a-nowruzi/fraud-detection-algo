@@ -2,67 +2,82 @@
 chcp 65001 >nul
 echo.
 echo ========================================
-echo    API تشخیص تقلب پزشکی
+echo    Fraud Detection API
 echo ========================================
 echo.
-echo در حال راه‌اندازی API...
+echo Initializing API...
 echo.
 
 REM بررسی وجود Python
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ❌ خطا: Python نصب نشده است!
-    echo لطفاً Python را از https://python.org نصب کنید.
+    echo ❌ Error: Python is not installed!
+    echo Please install Python from https://python.org.
     pause
     exit /b 1
 )
 
 REM بررسی وجود فایل‌های مورد نیاز
 if not exist "app.py" (
-    echo ❌ خطا: فایل app.py یافت نشد!
+    echo ❌ Error: app.py file not found!
     pause
     exit /b 1
 )
 
 if not exist "DataSEt_FD7.csv" (
-    echo ❌ خطا: فایل DataSEt_FD7.csv یافت نشد!
+    echo ❌ Error: DataSEt_FD7.csv file not found!
     pause
     exit /b 1
 )
 
 if not exist "specialties.csv" (
-    echo ❌ خطا: فایل specialties.csv یافت نشد!
+    echo ❌ Error: specialties.csv file not found!
     pause
     exit /b 1
 )
 
-echo ✅ فایل‌های مورد نیاز موجود هستند.
+echo ✅ All required files are present.
+echo.
+
+REM فعال‌سازی محیط مجازی
+echo 🔧 Activating virtual environment...
+if exist "venv\Scripts\activate.bat" (
+    call venv\Scripts\activate.bat
+    echo ✅ Virtual environment activated.
+) else (
+    echo ⚠️ Virtual environment not found. Creating one...
+    python -m venv venv
+    call venv\Scripts\activate.bat
+    echo ✅ Virtual environment created and activated.
+)
 echo.
 
 REM نصب وابستگی‌ها (در صورت نیاز)
-@REM echo 📦 بررسی وابستگی‌ها...
-@REM pip install -r requirements.txt >nul 2>&1
-@REM if errorlevel 1 (
-@REM     echo ⚠️ هشدار: برخی وابستگی‌ها نصب نشدند.
-@REM     echo لطفاً دستی نصب کنید: pip install -r requirements.txt
-@REM     echo.
-@REM )
+echo 📦 Installing dependencies...
+pip install -r requirements.txt
+if errorlevel 1 (
+    echo ❌ Error: Failed to install dependencies.
+    echo Please check your internet connection and try again.
+    pause
+    exit /b 1
+)
+echo ✅ Dependencies installed successfully.
 
 echo.
-echo 🚀 شروع API...
+echo 🚀 Starting API...
 echo.
-echo 📍 API در آدرس زیر در دسترس خواهد بود:
+echo 📍 API will be available at:
 echo    http://localhost:5000
 echo.
-echo 📋 برای مشاهده مستندات (Swagger UI) به آدرس زیر بروید:
+echo 📋 For documentation (Swagger UI), go to:
 echo    http://localhost:5000/docs/
 echo.
-echo ⏹️ برای توقف API، Ctrl+C را فشار دهید.
+echo ⏹️ To stop the API, press Ctrl+C.
 echo.
 
 REM اجرای API
 python app.py
 
 echo.
-echo API متوقف شد.
+echo API stopped.
 pause

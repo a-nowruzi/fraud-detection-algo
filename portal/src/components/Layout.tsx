@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, BarChart3, Activity, Settings, Home } from 'lucide-react';
+import { Shield, BarChart3, Activity, Home } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
