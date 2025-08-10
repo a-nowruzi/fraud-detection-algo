@@ -49,12 +49,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </header>
 
       {/* Right Sidebar */}
-      <div className={`vertical-menu ${sidebarOpen ? 'show' : ''}`}>
+      <div className={`vertical-menu ${sidebarOpen ? '' : 'hidden'}`}>
         <div className="h-100">
+          <div className="sidebar-header d-flex justify-content-between align-items-center p-3">
+            <h6 className="mb-0">منو</h6>
+            <button
+              type="button"
+              className="btn btn-sm btn-light"
+              onClick={() => setSidebarOpen(false)}
+            >
+              ×
+            </button>
+          </div>
           <div id="sidebar-menu">
             <ul className="metismenu list-unstyled" id="side-menu">
-              <li className="menu-title">منو</li>
-
               {navigation.map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
@@ -83,8 +91,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </div>
 
+      {/* Overlay for mobile */}
+      {sidebarOpen && (
+        <div 
+          className="sidebar-overlay" 
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Main Content */}
-      <div className="main-content">
+      <div className={`main-content ${sidebarOpen ? '' : 'expanded'}`}>
         <div className="page-content">
           {children}
         </div>
