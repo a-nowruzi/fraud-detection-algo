@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, BarChart3, Activity, Home } from 'lucide-react';
+import { Shield, BarChart3, Activity, Home, Menu, Settings } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,6 +8,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navigation = [
     { name: 'داشبورد', href: '/', icon: Home },
@@ -17,54 +18,87 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div id="layout-wrapper" dir="rtl">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Shield className="h-8 w-8 text-primary-600" />
-              <h1 className="mr-3 text-xl font-bold text-gray-900">
-                سیستم تشخیص تقلب پزشکی
-              </h1>
+      <header id="page-topbar">
+        <div className="navbar-header">
+          <div className="d-flex">
+            {/* LOGO */}
+            <div className="navbar-brand-box">
+              <Link to="/" className="logo logo-dark">
+                <span className="logo-sm">
+                  <Shield className="h-6 w-6" />
+                </span>
+                <span className="logo-lg">
+                  <Shield className="h-6 w-6" />
+                  <span className="logo-txt">تشخیص تقلب</span>
+                </span>
+              </Link>
             </div>
-            <div className="flex items-center space-x-4 space-x-reverse">
-              <span className="text-sm text-gray-500">نسخه 1.0.0</span>
-            </div>
+
+            <button
+              type="button"
+              className="btn btn-sm px-3 font-size-16 header-item"
+              id="vertical-menu-btn"
+              onClick={() => setSidebarOpen(!sidebarOpen)}>
+              <Menu className="h-4 w-4" />
+            </button>
+
           </div>
         </div>
       </header>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <nav className="w-64 bg-white shadow-sm min-h-screen">
-          <div className="p-4">
-            <nav className="space-y-2">
+      {/* Right Sidebar */}
+      <div className={`vertical-menu ${sidebarOpen ? 'show' : ''}`}>
+        <div className="h-100">
+          <div id="sidebar-menu">
+            <ul className="metismenu list-unstyled" id="side-menu">
+              <li className="menu-title">منو</li>
+
               {navigation.map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                      isActive
-                        ? 'bg-primary-100 text-primary-700'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
-                  >
-                    <item.icon className="ml-3 h-5 w-5" />
-                    {item.name}
-                  </Link>
+                  <li key={item.name}>
+                    <Link
+                      to={item.href}
+                      className={isActive ? 'active' : ''}
+                    >
+                      <item.icon className="h-4 w-4 ml-2" />
+                      <span>{item.name}</span>
+                    </Link>
+                  </li>
                 );
               })}
-            </nav>
-          </div>
-        </nav>
 
-        {/* Main content */}
-        <main className="flex-1 p-8">
+              <li className="menu-title mt-2">سیستم</li>
+
+              <li>
+                <a href="#settings">
+                  <Settings className="h-4 w-4 ml-2" />
+                  <span>تنظیمات</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="main-content">
+        <div className="page-content">
           {children}
-        </main>
+        </div>
+
+        {/* Footer */}
+        <footer className="footer">
+          <div className="container-fluid">
+            <div className="row">
+              <div className="col-sm-6">
+                2025 © سیستم تشخیص تقلب پزشکی
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

@@ -1,0 +1,284 @@
+/* Custom CSS for Minia Template */
+
+/* Fix for RTL layout */
+body[dir="rtl"] .metismenu a i {
+  margin-left: 0;
+  margin-right: 12px;
+}
+
+body[dir="rtl"] .app-search {
+  margin-left: 0;
+  margin-right: 20px;
+}
+
+body[dir="rtl"] .app-search .btn {
+  right: auto;
+  left: 0;
+  border-radius: 20px 0 0 20px;
+}
+
+body[dir="rtl"] .app-search .form-control {
+  padding-right: 12px;
+  padding-left: 40px;
+}
+
+/* Fix for header items spacing */
+.header-item {
+  margin: 0 4px;
+}
+
+/* Fix for user profile button */
+.header-profile-user {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Fix for notifications badge */
+.noti-icon {
+  position: relative;
+}
+
+.noti-icon .badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+/* Fix for sidebar active state */
+.metismenu a.active {
+  background: linear-gradient(135deg, var(--primary-color), #485ec4);
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(85, 110, 230, 0.3);
+}
+
+/* Fix for sidebar hover effects */
+.metismenu a:hover:not(.active) {
+  background: linear-gradient(135deg, rgba(85, 110, 230, 0.1), rgba(72, 94, 196, 0.1));
+  transform: translateX(4px);
+  transition: all 0.3s ease;
+}
+
+/* Fix for right sidebar form elements */
+.right-bar .form-check-input:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.right-bar .form-check-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(85, 110, 230, 0.25);
+}
+
+/* Fix for mobile responsiveness */
+@media (max-width: 768px) {
+  .navbar-brand-box .logo-lg .logo-txt {
+    display: none;
+  }
+  
+  .app-search {
+    display: none !important;
+  }
+  
+  .header-item {
+    padding: 6px;
+  }
+  
+  .main-content {
+    padding: 16px;
+  }
+  
+  .page-content {
+    padding: 16px;
+  }
+}
+
+/* Fix for dark mode transitions */
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body.dark-mode * {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Fix for scrollbar styling */
+.vertical-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vertical-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.vertical-menu::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.2);
+  border-radius: 3px;
+}
+
+.vertical-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.3);
+}
+
+body.dark-mode .vertical-menu::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+}
+
+body.dark-mode .vertical-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+/* Fix for button hover effects */
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+/* Fix for card shadows */
+.card {
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+}
+
+/* Fix for form control focus */
+.form-control:focus {
+  transform: scale(1.02);
+  transition: all 0.3s ease;
+}
+
+/* Fix for sidebar alert card */
+.sidebar-alert {
+  background: linear-gradient(135deg, var(--primary-color), #485ec4);
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-alert::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.sidebar-alert:hover::before {
+  transform: translateX(100%);
+}
+
+/* Fix for header search animation */
+.app-search .form-control {
+  transition: all 0.3s ease;
+}
+
+.app-search .form-control:focus {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 3px rgba(85, 110, 230, 0.1);
+}
+
+/* Fix for theme toggle animation */
+#mode-setting-btn {
+  transition: all 0.3s ease;
+}
+
+#mode-setting-btn:hover {
+  transform: rotate(180deg);
+}
+
+/* Fix for right sidebar toggle */
+.right-bar-toggle {
+  transition: all 0.3s ease;
+}
+
+.right-bar-toggle:hover {
+  transform: rotate(90deg);
+}
+
+/* Fix for mobile menu button */
+#vertical-menu-btn {
+  transition: all 0.3s ease;
+}
+
+#vertical-menu-btn:hover {
+  background-color: rgba(85, 110, 230, 0.1);
+  transform: scale(1.1);
+}
+
+/* Fix for footer links */
+.footer a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.footer a:hover {
+  color: #485ec4;
+  text-decoration: underline;
+}
+
+/* Fix for logo hover effect */
+.logo {
+  transition: all 0.3s ease;
+}
+
+.logo:hover {
+  transform: scale(1.05);
+}
+
+/* Fix for menu title styling */
+.menu-title {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.menu-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 24px;
+  right: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e9ecef, transparent);
+}
+
+body.dark-mode .menu-title::after {
+  background: linear-gradient(90deg, transparent, #4a5568, transparent);
+}
+
+/* Fix for active menu item indicator */
+.metismenu a.active::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 20px;
+  background: #fff;
+  border-radius: 2px 0 0 2px;
+}
+
+body[dir="rtl"] .metismenu a.active::before {
+  right: auto;
+  left: 0;
+  border-radius: 0 2px 2px 0;
+}

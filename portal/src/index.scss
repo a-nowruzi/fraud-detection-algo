@@ -57,6 +57,16 @@
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
+/* RTL Support */
+html {
+  direction: rtl;
+}
+
+body {
+  direction: rtl;
+  text-align: right;
+}
+
 /* Reset and Base Styles */
 * {
   margin: 0;
@@ -76,6 +86,7 @@ body {
   color: #333;
   background-color: #f8fafc;
   direction: rtl;
+  text-align: right;
 }
 
 /* Utility Classes */
@@ -88,6 +99,8 @@ body {
 .text-center { text-align: center; }
 .text-right { text-align: right; }
 .text-left { text-align: left; }
+.text-start { text-align: right; }
+.text-end { text-align: left; }
 
 .flex { display: flex; }
 .flex-col { flex-direction: column; }
@@ -114,12 +127,12 @@ body {
 .p-8 { padding: 2rem; }
 
 .px-4 { 
-  padding-left: 1rem;
   padding-right: 1rem;
+  padding-left: 1rem;
 }
 .px-6 { 
-  padding-left: 1.5rem;
   padding-right: 1.5rem;
+  padding-left: 1.5rem;
 }
 
 .py-2 { 
@@ -227,6 +240,7 @@ body {
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   text-decoration: none;
+  direction: rtl;
   
   &.btn-primary {
     background-color: var(--primary-600);
@@ -282,6 +296,8 @@ body {
   border-radius: 0.5rem;
   font-size: 0.875rem;
   transition: border-color 0.2s ease-in-out;
+  text-align: right;
+  direction: rtl;
   
   &:focus {
     outline: none;
@@ -300,6 +316,7 @@ body {
   border-radius: 0.75rem;
   box-shadow: var(--shadow);
   padding: 1.5rem;
+  direction: rtl;
   
   .card-header {
     border-bottom: 1px solid var(--gray-200);
@@ -312,12 +329,14 @@ body {
     font-weight: 600;
     color: var(--gray-900);
     margin: 0;
+    text-align: right;
   }
   
   .card-subtitle {
     font-size: 0.875rem;
     color: var(--gray-600);
     margin-top: 0.25rem;
+    text-align: right;
   }
 }
 
@@ -328,6 +347,7 @@ body {
   font-size: 0.75rem;
   font-weight: 500;
   border-radius: 9999px;
+  direction: rtl;
   
   &.badge-success {
     background-color: var(--success-100);
@@ -354,6 +374,8 @@ body {
   padding: 1rem;
   border-radius: 0.5rem;
   margin-bottom: 1rem;
+  direction: rtl;
+  text-align: right;
   
   &.alert-success {
     background-color: var(--success-50);
@@ -362,7 +384,7 @@ body {
   }
   
   &.alert-danger {
-    background-color: var(--danger-50);
+    background-color: var(--danger-100);
     border: 1px solid var(--danger-200);
     color: var(--danger-800);
   }
@@ -386,6 +408,7 @@ body {
   background-color: var(--gray-200);
   border-radius: 0.25rem;
   overflow: hidden;
+  direction: rtl;
   
   .progress-bar {
     height: 100%;
@@ -412,6 +435,7 @@ body {
   border-bottom: 1px solid var(--gray-200);
   padding: 1rem 0;
   box-shadow: var(--shadow-sm);
+  direction: rtl;
   
   .header-content {
     display: flex;
@@ -451,13 +475,14 @@ body {
 .sidebar {
   width: 250px;
   background-color: var(--white);
-  border-right: 1px solid var(--gray-200);
+  border-left: 1px solid var(--gray-200);
   height: 100vh;
   position: fixed;
   top: 0;
   right: 0;
   padding: 1rem;
   overflow-y: auto;
+  direction: rtl;
   
   .sidebar-nav {
     display: flex;
@@ -474,6 +499,7 @@ body {
     text-decoration: none;
     border-radius: 0.5rem;
     transition: all 0.2s ease-in-out;
+    text-align: right;
     
     &:hover {
       background-color: var(--gray-100);
@@ -491,6 +517,8 @@ body {
   margin-right: 250px;
   padding: 2rem;
   min-height: 100vh;
+  direction: rtl;
+  text-align: right;
 }
 
 /* Responsive Design */
@@ -515,6 +543,14 @@ body {
   
   .mobile-menu-btn {
     display: block;
+  }
+  
+  .vertical-menu {
+    transform: translateX(100%);
+  }
+  
+  .vertical-menu.show {
+    transform: translateX(0);
   }
 }
 
@@ -547,6 +583,7 @@ body {
 /* Form Styles */
 .form-group {
   margin-bottom: 1rem;
+  direction: rtl;
 }
 
 .form-label {
@@ -554,24 +591,28 @@ body {
   margin-bottom: 0.5rem;
   font-weight: 500;
   color: var(--gray-700);
+  text-align: right;
 }
 
 .form-error {
   color: var(--danger-600);
   font-size: 0.875rem;
   margin-top: 0.25rem;
+  text-align: right;
 }
 
 .form-help {
   color: var(--gray-600);
   font-size: 0.875rem;
   margin-top: 0.25rem;
+  text-align: right;
 }
 
 /* Table Styles */
 .table {
   width: 100%;
   border-collapse: collapse;
+  direction: rtl;
   
   th,
   td {
@@ -598,12 +639,14 @@ body {
   padding: 1.5rem;
   box-shadow: var(--shadow);
   margin-bottom: 1.5rem;
+  direction: rtl;
   
   .chart-title {
     font-size: 1.25rem;
     font-weight: 600;
     color: var(--gray-900);
     margin-bottom: 1rem;
+    text-align: right;
   }
 }
 
@@ -613,6 +656,7 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
+  direction: rtl;
 }
 
 .stat-card {
@@ -621,6 +665,7 @@ body {
   padding: 1.5rem;
   box-shadow: var(--shadow);
   text-align: center;
+  direction: rtl;
   
   .stat-value {
     font-size: 2rem;
@@ -643,6 +688,7 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1rem;
   margin-top: 1rem;
+  direction: rtl;
 }
 
 .risk-item {
@@ -650,6 +696,7 @@ body {
   border-radius: 0.5rem;
   padding: 1rem;
   border: 1px solid var(--gray-200);
+  direction: rtl;
   
   .risk-header {
     display: flex;
@@ -661,11 +708,13 @@ body {
   .risk-name {
     font-weight: 500;
     color: var(--gray-900);
+    text-align: right;
   }
   
   .risk-score {
     font-weight: 600;
     color: var(--primary-600);
+    text-align: right;
   }
   
   .risk-level {
@@ -697,10 +746,12 @@ body {
   border-radius: 0.75rem;
   padding: 1.5rem;
   box-shadow: var(--shadow);
+  direction: rtl;
   
   h3 {
     margin-bottom: 1rem;
     color: var(--gray-900);
+    text-align: right;
   }
   
   .api-buttons {
@@ -718,6 +769,7 @@ body {
     white-space: pre-wrap;
     max-height: 300px;
     overflow-y: auto;
+    text-align: right;
   }
 }
 
@@ -727,9 +779,9 @@ body {
 .space-y-6 > * + * { margin-top: 1.5rem; }
 .space-y-8 > * + * { margin-top: 2rem; }
 
-.space-x-2 > * + * { margin-right: 0.5rem; }
-.space-x-4 > * + * { margin-right: 1rem; }
-.space-x-6 > * + * { margin-right: 1.5rem; }
+.space-x-2 > * + * { margin-left: 0.5rem; }
+.space-x-4 > * + * { margin-left: 1rem; }
+.space-x-6 > * + * { margin-left: 1.5rem; }
 
 /* Print Styles */
 @media print {
