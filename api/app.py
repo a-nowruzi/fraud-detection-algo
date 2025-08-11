@@ -86,99 +86,150 @@ def load_and_prepare_data():
     """Load and prepare the dataset"""
     global data, clf, scaler, data_final
     
-    print("Loading dataset...")
-    data = pd.read_csv('DataSEt_FD7.csv')
+    try:
+        print("Loading dataset...")
+        data = pd.read_csv('DataSEt_FD7.csv')
+        
+        # Use utility functions for cleaning numeric columns
+        from utils import clean_numeric_column, memory_usage_optimizer
+        
+        # Clean numeric columns
+        data['cost_amount'] = clean_numeric_column(data['cost_amount'], 'cost_amount')
+        data['ded_amount'] = clean_numeric_column(data['ded_amount'], 'ded_amount')
+        data['confirmed_amount'] = clean_numeric_column(data['confirmed_amount'], 'confirmed_amount')
     
-    # Remove commas and spaces
-    data['cost_amount'] = data['cost_amount'].str.replace(',', '').str.strip()
-    data['ded_amount'] = data['ded_amount'].str.replace(',', '').str.strip()
-    data['confirmed_amount'] = data['confirmed_amount'].str.replace(',', '').str.strip()
-    
-    # Convert to numeric
-    data['cost_amount'] = pd.to_numeric(data['cost_amount'], errors='coerce').fillna(0).astype(int)
-    data['ded_amount'] = pd.to_numeric(data['ded_amount'], errors='coerce').fillna(0).astype(int)
-    data['confirmed_amount'] = pd.to_numeric(data['confirmed_amount'], errors='coerce').fillna(0).astype(int)
-    
-    # Fill missing provider names
-    data['provider_name'] = data['provider_name'].fillna(data['Ref_code'])
-    data['provider_name'] = data['provider_name'].fillna(data['Ref_name'])
-    
-    # Load specialties
-    specialties = pd.read_csv('specialties.csv')
-    merged_data = data.merge(specialties, on='Service', how='left')
-    data['provider_specialty'] = data['provider_specialty'].combine_first(merged_data['specialty'])
-    
-    # Add age column
-    data['age'] = data['jalali_date'].apply(calculate_age)
-    
-    # Convert dates
-    data['Adm_date'] = data['Adm_date'].apply(shamsi_to_miladi)
-    data['confirm_date'] = data['confirm_date'].apply(shamsi_to_miladi)
-    data['confirm_date'] = data['confirm_date'].fillna(data['Adm_date'].apply(add_one_month))
-    
-    # Reset confirmed amount
-    data['confirmed_amount'] = data['confirmed_amount'].fillna(0)
-    data['record_id'] = range(1, len(data) + 1)
-    data['Adm_date'] = pd.to_datetime(data['Adm_date'])
-    data['year_month'] = data['Adm_date'].dt.to_period('M')
-    
-    print("Extracting features...")
-    extract_features()
-    
-    print("Training model...")
-    train_model()
-    
-    print("Data and model loaded successfully!")
+            # Fill missing provider names
+        data['provider_name'] = data['provider_name'].fillna(data['ref_code'])
+        data['provider_name'] = data['provider_name'].fillna(data['ref_name'])
+        
+        # Load specialties
+        specialties = pd.read_csv('specialties.csv')
+        merged_data = data.merge(specialties, on='Service', how='left')
+        data['provider_specialty'] = data['provider_specialty'].combine_first(merged_data['specialty'])
+        
+        # Add age column using improved function
+        data['age'] = data['jalali_date'].apply(calculate_age)
+        
+        # Convert dates using improved functions
+        data['Adm_date'] = data['Adm_date'].apply(shamsi_to_miladi)
+        data['confirm_date'] = data['confirm_date'].apply(shamsi_to_miladi)
+        data['confirm_date'] = data['confirm_date'].fillna(data['Adm_date'].apply(add_one_month))
+        
+        # Reset confirmed amount
+        data['confirmed_amount'] = data['confirmed_amount'].fillna(0)
+        data['record_id'] = range(1, len(data) + 1)
+        data['Adm_date'] = pd.to_datetime(data['Adm_date'])
+        data['year_month'] = data['Adm_date'].dt.to_period('M')
+        
+        # Ensure consistent data types for key columns before feature extraction
+        data['ID'] = data['ID'].astype(str)
+        data['provider_name'] = data['provider_name'].astype(str)
+        data['Service'] = data['Service'].astype(str)
+        data['provider_specialty'] = data['provider_specialty'].astype(str)
+        data['year_month'] = data['year_month'].astype(str)
+        
+        # Optimize memory usage
+        data = memory_usage_optimizer(data)
+        
+        print("Extracting features...")
+        extract_features()
+        
+        print("Training model...")
+        train_model()
+        
+        print("Data and model loaded successfully!")
+        
+    except Exception as e:
+        print(f"Error loading and preparing data: {str(e)}")
+        raise
 
 def extract_features():
     """Extract all features from the dataset"""
     global data
     
-    # Feature 1: Ratio of total providers to unique providers
-    providers_count_per_month = data.groupby(['year_month', 'ID']).agg(
-        total_providers_monthly=('provider_name', 'count')
-    ).reset_index()
-    data = data.merge(providers_count_per_month, on=['year_month', 'ID'], how='left')
+    try:
+        # Use improved utility functions for safer calculations
+        from utils import safe_division, calculate_percentage_change
+        
+        # Data types are already consistent from load_and_prepare_data
+        
+        # Feature 1: Ratio of total providers to unique providers
+        providers_count_per_month = data.groupby(['year_month', 'ID']).agg(
+            total_providers_monthly=('provider_name', 'count')
+        ).reset_index()
+        data = data.merge(providers_count_per_month, on=['year_month', 'ID'], how='left')
+        
+        unique_providers_per_month = data.groupby(['year_month', 'ID']).agg(
+            unique_providers=('provider_name', 'nunique')
+        ).reset_index()
+        data = data.merge(unique_providers_per_month, on=['year_month', 'ID'], how='left')
+        
+        # Use safe division to avoid division by zero
+        data['unq_ratio_provider'] = data.apply(
+            lambda row: safe_division(row['total_providers_monthly'], row['unique_providers']), 
+            axis=1
+        )
     
-    unique_providers_per_month = data.groupby(['year_month', 'ID']).agg(
-        unique_providers=('provider_name', 'nunique')
-    ).reset_index()
-    data = data.merge(unique_providers_per_month, on=['year_month', 'ID'], how='left')
-    data['unq_ratio_provider'] = data['total_providers_monthly'] / data['unique_providers']
+        # Feature 2: Ratio of total patients to unique patients
+        patients_count_per_month = data.groupby(['year_month', 'provider_name']).agg(
+            total_patients_monthly=('ID', 'count')
+        ).reset_index()
+        data = data.merge(patients_count_per_month, on=['year_month', 'provider_name'], how='left')
+        
+        unique_patients_per_month = data.groupby(['year_month', 'provider_name']).agg(
+            unique_patients=('ID', 'nunique')
+        ).reset_index()
+        data = data.merge(unique_patients_per_month, on=['year_month', 'provider_name'], how='left')
+        
+        # Use safe division to avoid division by zero
+        data['unq_ratio_patient'] = data.apply(
+            lambda row: safe_division(row['total_patients_monthly'], row['unique_patients']), 
+            axis=1
+        )
     
-    # Feature 2: Ratio of total patients to unique patients
-    patients_count_per_month = data.groupby(['year_month', 'provider_name']).agg(
-        total_patients_monthly=('ID', 'count')
-    ).reset_index()
-    data = data.merge(patients_count_per_month, on=['year_month', 'provider_name'], how='left')
+        # Feature 3: Provider cost change percentage
+        monthly_means = data.groupby(['year_month', 'provider_name']).agg(
+            mean_amount_provider=('cost_amount', 'mean')
+        ).reset_index()
+        
+        monthly_means['previous_mean_amount_provider_1'] = monthly_means.groupby('provider_name')['mean_amount_provider'].shift(1)
+        monthly_means['previous_mean_amount_provider_2'] = monthly_means.groupby('provider_name')['mean_amount_provider'].shift(2)
+        monthly_means['average_previous_mean_provider'] = monthly_means[['previous_mean_amount_provider_1', 'previous_mean_amount_provider_2']].mean(axis=1)
+        
+        # Use improved percentage change calculation
+        monthly_means['percent_change_provider'] = monthly_means.apply(
+            lambda row: calculate_percentage_change(
+                row['mean_amount_provider'], 
+                row['average_previous_mean_provider']
+            ), 
+            axis=1
+        )
+        
+        data = data.merge(monthly_means, on=['year_month', 'provider_name'], how='left', suffixes=('', '_monthly'))
     
-    unique_patients_per_month = data.groupby(['year_month', 'provider_name']).agg(
-        unique_patients=('ID', 'nunique')
-    ).reset_index()
-    data = data.merge(unique_patients_per_month, on=['year_month', 'provider_name'], how='left')
-    data['unq_ratio_patient'] = data['total_patients_monthly'] / data['unique_patients']
-    
-    # Feature 3: Provider cost change percentage
-    monthly_means = data.groupby(['year_month', 'provider_name']).agg(
-        mean_amount_provider=('cost_amount', 'mean')
-    ).reset_index()
-    monthly_means['previous_mean_amount_provider_1'] = monthly_means.groupby('provider_name')['mean_amount_provider'].shift(1)
-    monthly_means['previous_mean_amount_provider_2'] = monthly_means.groupby('provider_name')['mean_amount_provider'].shift(2)
-    monthly_means['average_previous_mean_provider'] = monthly_means[['previous_mean_amount_provider_1', 'previous_mean_amount_provider_2']].mean(axis=1)
-    monthly_means['percent_change_provider'] = ((monthly_means['mean_amount_provider'] - monthly_means['average_previous_mean_provider']) / monthly_means['average_previous_mean_provider']) * 100
-    data = data.merge(monthly_means, on=['year_month', 'provider_name'], how='left', suffixes=('', '_monthly'))
-    data['percent_change_provider'] = data['percent_change_provider'].apply(lambda x: 0 if (pd.isna(x) or x < 0 or x > 2000) else x)
-    
-    # Feature 4: Patient cost change percentage
-    monthly_means = data.groupby(['year_month', 'ID']).agg(
-        mean_amount_patient=('cost_amount', 'mean')
-    ).reset_index()
-    monthly_means['previous_mean_amount_patient_1'] = monthly_means.groupby('ID')['mean_amount_patient'].shift(1)
-    monthly_means['previous_mean_amount_patient_2'] = monthly_means.groupby('ID')['mean_amount_patient'].shift(2)
-    monthly_means['average_previous_mean_patient'] = monthly_means[['previous_mean_amount_patient_1', 'previous_mean_amount_patient_2']].mean(axis=1)
-    monthly_means['percent_change_patient'] = ((monthly_means['mean_amount_patient'] - monthly_means['average_previous_mean_patient']) / monthly_means['average_previous_mean_patient']) * 100
-    data = data.merge(monthly_means, on=['year_month', 'ID'], how='left', suffixes=('', '_monthly'))
-    data['percent_change_patient'] = data['percent_change_patient'].apply(lambda x: 0 if (pd.isna(x) or x < 0 or x > 2000) else x)
+        # Feature 4: Patient cost change percentage
+        monthly_means = data.groupby(['year_month', 'ID']).agg(
+            mean_amount_patient=('cost_amount', 'mean')
+        ).reset_index()
+        
+        monthly_means['previous_mean_amount_patient_1'] = monthly_means.groupby('ID')['mean_amount_patient'].shift(1)
+        monthly_means['previous_mean_amount_patient_2'] = monthly_means.groupby('ID')['mean_amount_patient'].shift(2)
+        monthly_means['average_previous_mean_patient'] = monthly_means[['previous_mean_amount_patient_1', 'previous_mean_amount_patient_2']].mean(axis=1)
+        
+        # Use improved percentage change calculation
+        monthly_means['percent_change_patient'] = monthly_means.apply(
+            lambda row: calculate_percentage_change(
+                row['mean_amount_patient'], 
+                row['average_previous_mean_patient']
+            ), 
+            axis=1
+        )
+        
+        data = data.merge(monthly_means, on=['year_month', 'ID'], how='left', suffixes=('', '_monthly'))
+        
+    except Exception as e:
+        print(f"Error extracting features: {str(e)}")
+        raise
     
     # Feature 5: Service cost difference percentage
     monthly_avg = data.groupby(['year_month', 'Service']).agg(avg_amount=('cost_amount', 'mean')).reset_index()
@@ -191,9 +242,11 @@ def extract_features():
     monthly_avg_per_provider = data.groupby(['year_month', 'provider_name', 'Service']).agg(
         avg_amount_ser=('cost_amount', 'mean')
     ).reset_index()
+    
     monthly_avg_overall = data.groupby(['year_month', 'Service']).agg(
         overall_avg_amount_ser=('cost_amount', 'mean')
     ).reset_index()
+    
     monthly_avg_overall['prev_avg_amount_serv'] = monthly_avg_overall.groupby('Service')['overall_avg_amount_ser'].shift(1)
     data = data.merge(monthly_avg_per_provider[['year_month', 'provider_name', 'Service', 'avg_amount_ser']], 
                      on=['year_month', 'provider_name', 'Service'], how='left', suffixes=('', '_provider'))
@@ -207,9 +260,11 @@ def extract_features():
     monthly_avg_per_provider_spe = data.groupby(['year_month', 'provider_name', 'provider_specialty']).agg(
         avg_amount_spe=('cost_amount', 'mean')
     ).reset_index()
+    
     monthly_avg_overall_spe = data.groupby(['year_month', 'provider_specialty']).agg(
         overall_avg_amount_spe=('cost_amount', 'mean')
     ).reset_index()
+    
     monthly_avg_overall_spe['prev_avg_amount_spe'] = monthly_avg_overall_spe.groupby('provider_specialty')['overall_avg_amount_spe'].shift(1)
     data = data.merge(monthly_avg_per_provider_spe[['year_month', 'provider_name', 'provider_specialty', 'avg_amount_spe']], 
                      on=['year_month', 'provider_name', 'provider_specialty'], how='left', suffixes=('', '_provider'))
@@ -226,9 +281,11 @@ def extract_features():
     monthly_avg_per_patient = data.groupby(['year_month', 'ID', 'Service']).agg(
         avg_amount_ser_patient=('cost_amount', 'mean')
     ).reset_index()
+    
     monthly_avg_overall_patient = data.groupby(['year_month', 'Service']).agg(
         overall_avg_amount_ser_patient=('cost_amount', 'mean')
     ).reset_index()
+    
     monthly_avg_overall_patient['prev_avg_amount_serv_patient'] = monthly_avg_overall_patient.groupby('Service')['overall_avg_amount_ser_patient'].shift(1)
     data = data.merge(monthly_avg_per_patient[['year_month', 'ID', 'Service', 'avg_amount_ser_patient']], 
                      on=['year_month', 'ID', 'Service'], how='left', suffixes=('', '_patient'))
@@ -242,6 +299,7 @@ def extract_features():
     monthly_avg_overall = data.groupby(['year_month', 'Service']).agg(
         overall_avg_amount_ser=('cost_amount', 'mean')
     ).reset_index()
+    
     monthly_avg_overall['prev_avg_amount_ser'] = monthly_avg_overall.groupby('Service')['overall_avg_amount_ser'].shift(1)
     data = data.merge(monthly_avg_overall[['year_month', 'Service', 'prev_avg_amount_ser']], 
                      on=['year_month', 'Service'], how='left')
@@ -251,8 +309,10 @@ def extract_features():
     
     # Feature 9: Service ratio
     provider_service_count = data.groupby(['provider_name', 'Service']).size().reset_index(name='Count')
+    
     provider_count = data['provider_name'].value_counts().reset_index()
     provider_count.columns = ['provider_name', 'TotalCount']
+    
     merged = pd.merge(provider_service_count, provider_count, on='provider_name')
     merged['Ratio'] = 1 - (merged['Count'] / merged['TotalCount'])
     merged.loc[merged['TotalCount'] == 1, 'Ratio'] = 0
