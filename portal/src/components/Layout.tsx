@@ -18,7 +18,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const navigation = [
     { name: 'داشبورد', href: '/', icon: Home },
-    { name: 'تشخیص تقلب', href: '/predict', icon: Shield },
     { name: 'نمودارها', href: '/charts', icon: BarChart3 },
     { name: 'آمار سیستم', href: '/stats', icon: Activity },
   ];
@@ -182,7 +181,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div className="card-body">
                 <h5 className="alertcard-title font-size-16 text-black">بررسی تقلب</h5>
                 <p className="font-size-13 text-black">برای بررسی نسخه جدید، بر روی دکمه زیر کلیک کنید.</p>
-                <Link to="/upload" className="btn btn-primary mt-2">نسخه جدید</Link>
+                <Link to="/predict" className="btn btn-primary mt-2">نسخه جدید</Link>
               </div>
             </div>
           </div>
