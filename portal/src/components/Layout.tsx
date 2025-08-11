@@ -45,6 +45,33 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Fix dropdown transform styles
+  useEffect(() => {
+    const fixDropdownTransform = () => {
+      const dropdownMenus = document.querySelectorAll('.dropdown-menu');
+      dropdownMenus.forEach(menu => {
+        if (menu instanceof HTMLElement) {
+          menu.style.transform = 'none';
+        }
+      });
+    };
+
+    // Fix on mount
+    fixDropdownTransform();
+
+    // Fix when dropdowns are shown
+    const handleDropdownShow = () => {
+      setTimeout(fixDropdownTransform, 10);
+    };
+
+    document.addEventListener('show.bs.dropdown', handleDropdownShow);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('show.bs.dropdown', handleDropdownShow);
+    };
+  }, []);
+
   return (
     <div id="layout-wrapper" dir="rtl">
       {/* Header */}
@@ -77,7 +104,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="d-flex">
 
             {/* User Profile */}
-            <div className="dropdown d-inline-block">
+            <div className="dropdown d-inline-block" style={{ marginLeft: '25px' }}>
               <button
                 type="button"
                 className="btn header-item bg-light-subtle border-start border-end"
@@ -85,10 +112,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 data-bs-toggle="dropdown"
                 aria-haspopup="true"
                 aria-expanded="false">
-                <div className="rounded-circle header-profile-user" style={{ width: '32px', height: '32px', backgroundColor: '#5156be', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                <div className="rounded-circle header-profile-user" style={{ width: '32px', height: '32px', backgroundColor: '#5156be', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', marginLeft: '5px' }}>
                   <User className="h-4 w-4" />
                 </div>
-                <span className="d-none d-xl-inline-block ms-1 fw-medium">کاربر</span>
+                <span className="d-none d-xl-inline-block ms-1 fw-medium">مدیر سیستم</span>
               </button>
               <div className="dropdown-menu dropdown-menu-end">
                 <Link to="/profile" className="dropdown-item">
@@ -129,8 +156,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             <div className="card sidebar-alert border-0 text-center mx-4 mb-0 mt-5">
               <div className="card-body">
-                  <h5 className="alertcard-title font-size-16">بررسی تقلب</h5>
-                  <p className="font-size-13">برای بررسی نسخه جدید، بر روی دکمه زیر کلیک کنید.</p>
+                  <h5 className="alertcard-title font-size-16 text-black">بررسی تقلب</h5>
+                  <p className="font-size-13 text-black">برای بررسی نسخه جدید، بر روی دکمه زیر کلیک کنید.</p>
                   <Link to="/upload" className="btn btn-primary mt-2">نسخه جدید</Link>
                 </div>
             </div>

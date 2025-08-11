@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
-import './index.scss'
+import './assets/css/index.scss'
 
 // Function to hide preloader
 const hidePreloader = () => {

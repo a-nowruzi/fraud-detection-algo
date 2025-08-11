@@ -134,24 +134,6 @@ body.dark-mode .logo-txt {
   color: #e9ecef;
 }
 
-/* Header Items */
-.header-item {
-  background: transparent;
-  border: none;
-  padding: 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.header-item:hover {
-  background-color: rgba(0,0,0,0.1);
-}
-
-body.dark-mode .header-item:hover {
-  background-color: rgba(255,255,255,0.1);
-}
-
 /* App Search */
 .app-search {
   margin-left: 20px;

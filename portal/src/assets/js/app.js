@@ -63,6 +63,41 @@
         dropdownElementList.map(function (dropdownToggleEl) {
             return new bootstrap.Dropdown(dropdownToggleEl);
         });
+        
+        // Fix dropdown transform issues
+        fixDropdownTransform();
+    }
+    
+    // Fix dropdown transform styles
+    function fixDropdownTransform() {
+        // Remove transform from all dropdown menus
+        const dropdownMenus = document.querySelectorAll('.dropdown-menu');
+        dropdownMenus.forEach(menu => {
+            menu.style.transform = 'none';
+        });
+        
+        // Listen for dropdown show events
+        document.addEventListener('show.bs.dropdown', function (event) {
+            const dropdownMenu = event.target.querySelector('.dropdown-menu');
+            if (dropdownMenu) {
+                // Remove transform after a short delay to ensure Bootstrap has applied it
+                setTimeout(() => {
+                    dropdownMenu.style.transform = 'none';
+                }, 10);
+            }
+        });
+        
+        // Also fix on click events
+        document.addEventListener('click', function (event) {
+            if (event.target.closest('.dropdown-toggle')) {
+                setTimeout(() => {
+                    const dropdownMenu = event.target.closest('.dropdown').querySelector('.dropdown-menu');
+                    if (dropdownMenu) {
+                        dropdownMenu.style.transform = 'none';
+                    }
+                }, 10);
+            }
+        });
     }
 
     // Theme switcher
