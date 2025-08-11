@@ -2,14 +2,41 @@
 (function() {
     'use strict';
 
+    // Hide preloader when page is loaded
+    function hidePreloader() {
+        const preloader = document.getElementById('preloader');
+        if (preloader) {
+            // Add fade-out class for animation
+            preloader.classList.add('fade-out');
+            
+            // Hide after animation completes
+            setTimeout(() => {
+                preloader.style.display = 'none';
+            }, 500);
+        }
+    }
+
     // Toggle sidebar on mobile
     function initSidebarToggle() {
         const sidebarToggle = document.getElementById('vertical-menu-btn');
         const sidebar = document.querySelector('.vertical-menu');
+        const mainContent = document.querySelector('.main-content');
+        const isRTL = document.documentElement.dir === 'rtl';
         
         if (sidebarToggle && sidebar) {
             sidebarToggle.addEventListener('click', function() {
                 sidebar.classList.toggle('show');
+                
+                // Toggle main content margin for mobile
+                if (window.innerWidth <= 991.98) {
+                    if (sidebar.classList.contains('show')) {
+                        mainContent.style.marginRight = '0';
+                        mainContent.style.marginLeft = '0';
+                    } else {
+                        mainContent.style.marginRight = '';
+                        mainContent.style.marginLeft = '';
+                    }
+                }
             });
         }
     }
@@ -103,6 +130,9 @@
 
     // Initialize all functions
     function init() {
+        // Hide preloader first
+        hidePreloader();
+        
         initSidebarToggle();
         initThemeSwitcher();
         initRightSidebar();
@@ -123,9 +153,16 @@
         init();
     }
 
+    // Also hide preloader when window is fully loaded
+    window.addEventListener('load', hidePreloader);
+
+    // Hide preloader after a delay as fallback
+    setTimeout(hidePreloader, 3000);
+
     // Export functions for global use
     window.MiniaApp = {
         init: init,
+        hidePreloader: hidePreloader,
         initSidebarToggle: initSidebarToggle,
         initThemeSwitcher: initThemeSwitcher,
         initRightSidebar: initRightSidebar,

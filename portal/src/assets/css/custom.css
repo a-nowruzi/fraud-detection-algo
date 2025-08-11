@@ -98,75 +98,32 @@ body[dir="rtl"] .app-search .form-control {
   .main-content {
     padding: 16px;
   }
-  
-  .page-content {
-    padding: 16px;
-  }
 }
 
-/* Fix for dark mode transitions */
-body {
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-body.dark-mode * {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
-
-/* Fix for scrollbar styling */
-.vertical-menu::-webkit-scrollbar {
-  width: 6px;
-}
-
-.vertical-menu::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.vertical-menu::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.2);
-  border-radius: 3px;
-}
-
-.vertical-menu::-webkit-scrollbar-thumb:hover {
-  background: rgba(0,0,0,0.3);
-}
-
-body.dark-mode .vertical-menu::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.2);
-}
-
-body.dark-mode .vertical-menu::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.3);
-}
-
-/* Fix for button hover effects */
-.btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  transition: all 0.3s ease;
-}
-
-/* Fix for card shadows */
+/* Card improvements */
 .card {
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  border: none;
+  box-shadow: 0 0 35px 0 rgba(154, 161, 171, 0.15);
+  border-radius: 0.5rem;
 }
 
 .card:hover {
-  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  box-shadow: 0 0 35px 0 rgba(154, 161, 171, 0.25);
   transform: translateY(-2px);
-}
-
-/* Fix for form control focus */
-.form-control:focus {
-  transform: scale(1.02);
   transition: all 0.3s ease;
 }
 
-/* Fix for sidebar alert card */
+/* Form control improvements */
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(85, 110, 230, 0.25);
+}
+
+/* Sidebar alert improvements */
 .sidebar-alert {
-  background: linear-gradient(135deg, var(--primary-color), #485ec4);
-  position: relative;
-  overflow: hidden;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
 }
 
 .sidebar-alert::before {
@@ -176,58 +133,66 @@ body.dark-mode .vertical-menu::-webkit-scrollbar-thumb:hover {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
-  transform: translateX(-100%);
-  transition: transform 0.6s ease;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  opacity: 0.9;
+  border-radius: 0.5rem;
+  z-index: -1;
 }
 
 .sidebar-alert:hover::before {
-  transform: translateX(100%);
+  opacity: 1;
+  transform: scale(1.02);
+  transition: all 0.3s ease;
 }
 
-/* Fix for header search animation */
+/* App search improvements */
 .app-search .form-control {
-  transition: all 0.3s ease;
+  border-radius: 20px;
+  border: 1px solid #e3e6f0;
 }
 
 .app-search .form-control:focus {
-  transform: scale(1.05);
-  box-shadow: 0 0 0 3px rgba(85, 110, 230, 0.1);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(85, 110, 230, 0.25);
 }
 
-/* Fix for theme toggle animation */
+/* Mode setting button improvements */
 #mode-setting-btn {
-  transition: all 0.3s ease;
+  border: none;
+  background: transparent;
 }
 
 #mode-setting-btn:hover {
-  transform: rotate(180deg);
+  background: rgba(85, 110, 230, 0.1);
+  border-radius: 50%;
 }
 
-/* Fix for right sidebar toggle */
+/* Right sidebar toggle improvements */
 .right-bar-toggle {
-  transition: all 0.3s ease;
+  border: none;
+  background: transparent;
 }
 
 .right-bar-toggle:hover {
-  transform: rotate(90deg);
+  background: rgba(85, 110, 230, 0.1);
+  border-radius: 50%;
 }
 
-/* Fix for mobile menu button */
+/* Vertical menu button improvements */
 #vertical-menu-btn {
-  transition: all 0.3s ease;
+  border: none;
+  background: transparent;
 }
 
 #vertical-menu-btn:hover {
-  background-color: rgba(85, 110, 230, 0.1);
-  transform: scale(1.1);
+  background: rgba(85, 110, 230, 0.1);
+  border-radius: 50%;
 }
 
-/* Fix for footer links */
+/* Footer improvements */
 .footer a {
   color: var(--primary-color);
   text-decoration: none;
-  transition: color 0.3s ease;
 }
 
 .footer a:hover {
@@ -235,50 +200,322 @@ body.dark-mode .vertical-menu::-webkit-scrollbar-thumb:hover {
   text-decoration: underline;
 }
 
-/* Fix for logo hover effect */
+/* Logo improvements */
 .logo {
-  transition: all 0.3s ease;
+  text-decoration: none;
 }
 
 .logo:hover {
-  transform: scale(1.05);
+  text-decoration: none;
 }
 
-/* Fix for menu title styling */
+/* Menu title improvements */
 .menu-title {
-  position: relative;
-  margin-bottom: 16px;
+  color: #6c757d;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .menu-title::after {
   content: '';
   position: absolute;
-  bottom: 0;
-  left: 24px;
-  right: 24px;
+  top: 50%;
+  right: 0;
+  left: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #e9ecef, transparent);
+  background: linear-gradient(90deg, transparent, #e3e6f0, transparent);
+  transform: translateY(-50%);
 }
 
 body.dark-mode .menu-title::after {
-  background: linear-gradient(90deg, transparent, #4a5568, transparent);
+  background: linear-gradient(90deg, transparent, #495057, transparent);
 }
 
-/* Fix for active menu item indicator */
+/* Active menu item improvements */
 .metismenu a.active::before {
   content: '';
   position: absolute;
+  top: 0;
   right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 20px;
-  background: #fff;
-  border-radius: 2px 0 0 2px;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(135deg, var(--primary-color), #485ec4);
+  border-radius: 0 3px 3px 0;
 }
 
 body[dir="rtl"] .metismenu a.active::before {
   right: auto;
   left: 0;
-  border-radius: 0 2px 2px 0;
+  border-radius: 3px 0 0 3px;
+}
+
+/* Preloader improvements */
+#preloader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+#preloader #status {
+  text-align: center;
+}
+
+/* Dark mode improvements */
+body.dark-mode {
+  background-color: #1a1d21;
+  color: #e9ecef;
+}
+
+body.dark-mode * {
+  border-color: #495057;
+}
+
+/* Scrollbar improvements */
+.vertical-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vertical-menu::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.vertical-menu::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.vertical-menu::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+body.dark-mode .vertical-menu::-webkit-scrollbar-thumb {
+  background: #6c757d;
+}
+
+body.dark-mode .vertical-menu::-webkit-scrollbar-thumb:hover {
+  background: #495057;
+}
+
+/* Button improvements */
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+/* Chart placeholder improvements */
+.chart-placeholder {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px dashed #dee2e6;
+  color: #6c757d;
+}
+
+/* Activity list improvements */
+.activity-list {
+  border-bottom: 1px solid #e3e6f0;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.activity-list:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+/* Timeline improvements */
+.timeline-list-item {
+  position: relative;
+}
+
+.timeline-list-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -1.5rem;
+  width: 1px;
+  height: 100%;
+  background: #e3e6f0;
+}
+
+/* Avatar improvements */
+.avatar-sm {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 600;
+}
+
+.avatar-md {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 600;
+}
+
+/* Badge improvements */
+.badge {
+  font-weight: 500;
+  padding: 0.35em 0.65em;
+}
+
+/* Progress bar improvements */
+.progress {
+  background-color: #e9ecef;
+  border-radius: 0.375rem;
+}
+
+.progress-bar {
+  border-radius: 0.375rem;
+}
+
+/* Dropdown improvements */
+.dropdown-menu {
+  border: none;
+  box-shadow: 0 0 35px 0 rgba(154, 161, 171, 0.15);
+  border-radius: 0.5rem;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(85, 110, 230, 0.1);
+}
+
+/* Table improvements */
+.table {
+  margin-bottom: 0;
+}
+
+.table th {
+  border-top: none;
+  font-weight: 600;
+  color: #495057;
+}
+
+.table td {
+  border-top: 1px solid #e3e6f0;
+  vertical-align: middle;
+}
+
+/* Breadcrumb improvements */
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  color: #6c757d;
+}
+
+/* Page title improvements */
+.page-title-box {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 0 35px 0 rgba(154, 161, 171, 0.15);
+  margin-bottom: 1.5rem;
+}
+
+/* Counter improvements */
+.counter-value {
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+/* Notification improvements */
+.notification-item {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.notification-item:hover {
+  background-color: rgba(85, 110, 230, 0.05);
+  transform: translateX(-4px);
+}
+
+/* Right sidebar improvements */
+.right-bar {
+  position: fixed;
+  top: 0;
+  right: -300px;
+  width: 300px;
+  height: 100%;
+  background: #fff;
+  z-index: 1000;
+  transition: right 0.3s ease;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+}
+
+.right-bar.show {
+  right: 0;
+}
+
+.rightbar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: none;
+}
+
+.rightbar-overlay.show {
+  display: block;
+}
+
+/* Mobile sidebar improvements */
+@media (max-width: 991.98px) {
+  .vertical-menu {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100%;
+    background: #fff;
+    z-index: 1000;
+    transition: left 0.3s ease;
+    box-shadow: 5px 0 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .vertical-menu.show {
+    left: 0;
+  }
+  
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+}
+
+/* Print improvements */
+@media print {
+  .vertical-menu,
+  .right-bar,
+  .sidebar-overlay,
+  .rightbar-overlay {
+    display: none !important;
+  }
+  
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
 }

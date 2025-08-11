@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, BarChart3, Activity, Home, Menu, Settings } from 'lucide-react';
+import { Shield, BarChart3, Activity, Home, Menu, Settings, User, LogOut } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,7 +8,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const navigation = [
     { name: 'داشبورد', href: '/', icon: Home },
@@ -16,6 +16,34 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'نمودارها', href: '/charts', icon: BarChart3 },
     { name: 'آمار سیستم', href: '/stats', icon: Activity },
   ];
+
+  useEffect(() => {
+    // Initialize Minia theme functionality
+    if (typeof window !== 'undefined') {
+      // Add any Minia-specific initialization here
+      document.body.setAttribute('data-layout', 'vertical');
+      document.body.setAttribute('data-sidebar', 'light');
+      document.body.setAttribute('data-topbar', 'light');
+    }
+  }, []);
+
+  useEffect(() => {
+    // Hide preloader when component mounts
+    const hidePreloader = () => {
+      const preloader = document.getElementById('preloader');
+      if (preloader) {
+        preloader.style.opacity = '0';
+        setTimeout(() => {
+          preloader.style.display = 'none';
+        }, 300);
+      }
+    };
+
+    // Hide preloader after a short delay to ensure smooth transition
+    const timer = setTimeout(hidePreloader, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div id="layout-wrapper" dir="rtl">
@@ -25,7 +53,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="d-flex">
             {/* LOGO */}
             <div className="navbar-brand-box">
-              <Link to="/" className="logo logo-dark">
+
+              <Link to="/" className="logo logo-light">
                 <span className="logo-sm">
                   <Shield className="h-6 w-6" />
                 </span>
@@ -43,64 +72,74 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               onClick={() => setSidebarOpen(!sidebarOpen)}>
               <Menu className="h-4 w-4" />
             </button>
+          </div>
 
+          <div className="d-flex">
+
+            {/* User Profile */}
+            <div className="dropdown d-inline-block">
+              <button
+                type="button"
+                className="btn header-item bg-light-subtle border-start border-end"
+                id="page-header-user-dropdown"
+                data-bs-toggle="dropdown"
+                aria-haspopup="true"
+                aria-expanded="false">
+                <div className="rounded-circle header-profile-user" style={{ width: '32px', height: '32px', backgroundColor: '#5156be', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                  <User className="h-4 w-4" />
+                </div>
+                <span className="d-none d-xl-inline-block ms-1 fw-medium">کاربر</span>
+              </button>
+              <div className="dropdown-menu dropdown-menu-end">
+                <Link to="/profile" className="dropdown-item">
+                  <span className="font-size-16 align-middle me-1"><Settings className="h-4 w-4" /></span> پروفایل
+                </Link>
+                <div className="dropdown-divider"></div>
+                <Link to="/logout" className="dropdown-item">
+                  <span className="font-size-16 align-middle me-1"><LogOut className="h-4 w-4" /></span> خروج
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Right Sidebar */}
       <div className={`vertical-menu ${sidebarOpen ? '' : 'hidden'}`}>
-        <div className="h-100">
-          <div className="sidebar-header d-flex justify-content-between align-items-center p-3">
-            <h6 className="mb-0">منو</h6>
-            <button
-              type="button"
-              className="btn btn-sm btn-light"
-              onClick={() => setSidebarOpen(false)}
-            >
-              ×
-            </button>
-          </div>
+        <div data-simplebar className="h-100">
           <div id="sidebar-menu">
             <ul className="metismenu list-unstyled" id="side-menu">
-              {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <li key={item.name}>
-                    <Link
-                      to={item.href}
-                      className={isActive ? 'active' : ''}
-                    >
-                      <item.icon className="h-4 w-4 ml-2" />
-                      <span>{item.name}</span>
-                    </Link>
-                  </li>
-                );
-              })}
+              <li className="menu-title" data-key="t-menu">منو</li>
 
-              <li className="menu-title mt-2">سیستم</li>
-
-              <li>
-                <a href="#settings">
-                  <Settings className="h-4 w-4 ml-2" />
-                  <span>تنظیمات</span>
-                </a>
-              </li>
+              {
+                navigation.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <li key={item.name}>
+                      <Link
+                        to={item.href}
+                        className={isActive ? 'active' : ''}>
+                        <item.icon className="h-4 w-4" style={{ marginLeft: '7px' }} />
+                        <span>{item.name}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
             </ul>
+
+            <div className="card sidebar-alert border-0 text-center mx-4 mb-0 mt-5">
+              <div className="card-body">
+                  <h5 className="alertcard-title font-size-16">بررسی تقلب</h5>
+                  <p className="font-size-13">برای بررسی نسخه جدید، بر روی دکمه زیر کلیک کنید.</p>
+                  <Link to="/upload" className="btn btn-primary mt-2">نسخه جدید</Link>
+                </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Overlay for mobile */}
-      {sidebarOpen && (
-        <div 
-          className="sidebar-overlay" 
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       {/* Main Content */}
-      <div className={`main-content ${sidebarOpen ? '' : 'expanded'}`}>
+      <div className={`main-content ${sidebarOpen ? '' : 'sidebar-hidden'}`}>
         <div className="page-content">
           {children}
         </div>
@@ -112,10 +151,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div className="col-sm-6">
                 2025 © سیستم تشخیص تقلب پزشکی
               </div>
+              <div className="col-sm-6">
+                <div className="text-sm-end d-none d-sm-block">
+                  طراحی و توسعه توسط <a href="#!" className="text-decoration-underline">تیم توسعه</a>
+                </div>
+              </div>
             </div>
           </div>
         </footer>
       </div>
+
+      {/* Overlay for mobile sidebar */}
+      {sidebarOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
     </div>
   );
 };

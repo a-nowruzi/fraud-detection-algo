@@ -7,18 +7,16 @@ import StatsPage from './pages/StatsPage';
 
 function App() {
   return (
-    <div dir="rtl">
-      <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/predict" element={<PredictPage />} />
-            <Route path="/charts" element={<ChartsPage />} />
-            <Route path="/stats" element={<StatsPage />} />
-          </Routes>
-        </Layout>
-      </Router>
-    </div>
+    <Router>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/predict" element={<PredictPage />} />
+          <Route path="/charts" element={<ChartsPage />} />
+          <Route path="/stats" element={<StatsPage />} />
+        </Routes>
+      </Layout>
+    </Router>
   );
 }
 

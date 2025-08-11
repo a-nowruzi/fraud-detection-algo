@@ -2,11 +2,20 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.scss'
-import './assets/css/fonts.css'
-import './assets/css/font-variables.css'
-import './assets/css/app.min.css'
-import './assets/css/custom.css'
-import './assets/css/rtl.css'
+
+// Function to hide preloader
+const hidePreloader = () => {
+  const preloader = document.getElementById('preloader');
+  if (preloader) {
+    preloader.style.opacity = '0';
+    setTimeout(() => {
+      preloader.style.display = 'none';
+    }, 300);
+  }
+};
+
+// Hide preloader when React app is ready
+setTimeout(hidePreloader, 1000);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
