@@ -8,7 +8,13 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Check if we're on mobile (client-side only)
+    if (typeof window !== 'undefined') {
+      return window.innerWidth > 768;
+    }
+    return true; // Default for SSR
+  });
 
   const navigation = [
     { name: 'داشبورد', href: '/', icon: Home },
@@ -25,6 +31,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       document.body.setAttribute('data-sidebar', 'light');
       document.body.setAttribute('data-topbar', 'light');
     }
+  }, []);
+
+  useEffect(() => {
+    // Handle window resize for sidebar state
+    const handleResize = () => {
+      if (window.innerWidth <= 768) {
+        setSidebarOpen(false); // Hide sidebar on mobile
+      } else {
+        setSidebarOpen(true); // Show sidebar on desktop
+      }
+    };
+
+    // Set initial state
+    handleResize();
+
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
@@ -65,7 +91,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
 
     document.addEventListener('show.bs.dropdown', handleDropdownShow);
-    
+
     // Cleanup
     return () => {
       document.removeEventListener('show.bs.dropdown', handleDropdownShow);
@@ -87,7 +113,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </span>
                 <span className="logo-lg">
                   <Shield className="h-6 w-6" />
-                  <span className="logo-txt">تشخیص تقلب</span>
+                  <span className="logo-txt">سامانه جامع تشخیص تقلب</span>
                 </span>
               </Link>
             </div>
@@ -132,12 +158,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </header>
 
       {/* Right Sidebar */}
-      <div className={`vertical-menu ${sidebarOpen ? '' : 'hidden'}`}>
+      <div className={`vertical-menu ${sidebarOpen ? 'show' : 'hidden'}`}>
         <div data-simplebar className="h-100">
           <div id="sidebar-menu">
             <ul className="metismenu list-unstyled" id="side-menu">
-              <li className="menu-title" data-key="t-menu">منو</li>
-
               {
                 navigation.map((item) => {
                   const isActive = location.pathname === item.href;
@@ -156,10 +180,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             <div className="card sidebar-alert border-0 text-center mx-4 mb-0 mt-5">
               <div className="card-body">
-                  <h5 className="alertcard-title font-size-16 text-black">بررسی تقلب</h5>
-                  <p className="font-size-13 text-black">برای بررسی نسخه جدید، بر روی دکمه زیر کلیک کنید.</p>
-                  <Link to="/upload" className="btn btn-primary mt-2">نسخه جدید</Link>
-                </div>
+                <h5 className="alertcard-title font-size-16 text-black">بررسی تقلب</h5>
+                <p className="font-size-13 text-black">برای بررسی نسخه جدید، بر روی دکمه زیر کلیک کنید.</p>
+                <Link to="/upload" className="btn btn-primary mt-2">نسخه جدید</Link>
+              </div>
             </div>
           </div>
         </div>
@@ -173,18 +197,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Footer */}
         <footer className="footer">
-          <div className="container-fluid">
-            <div className="row">
-              <div className="col-sm-6">
-                2025 © سیستم تشخیص تقلب پزشکی
-              </div>
-              <div className="col-sm-6">
-                <div className="text-sm-end d-none d-sm-block">
-                  طراحی و توسعه توسط <a href="#!" className="text-decoration-underline">تیم توسعه</a>
-                </div>
-              </div>
-            </div>
-          </div>
+          2025 © سیستم تشخیص تقلب پزشکی
         </footer>
       </div>
 
