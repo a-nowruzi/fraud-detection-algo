@@ -43,8 +43,8 @@ def shamsi_to_miladi(date_str: Union[str, pd.Timestamp, None]) -> Optional[datet
             raise ValueError("Month must be between 1 and 12")
         if not (1 <= day <= 31):
             raise ValueError("Day must be between 1 and 31")
-        if year < 1300 or year > 1500:  # Reasonable Persian year range
-            raise ValueError("Year must be between 1300 and 1500")
+        if year < 1200 or year > 1500:  # Reasonable Persian year range
+            raise ValueError("Year must be between 1200 and 1500")
         
         # Convert Persian date to Gregorian
         try:

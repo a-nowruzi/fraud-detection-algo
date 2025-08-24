@@ -76,7 +76,7 @@ Contains the main fraud detection dataset with columns:
 - `id` - Primary key
 - `ID` - Patient ID
 - `provider_name` - Healthcare provider name
-- `ref_code` - Reference code
+- `Ref_code` - Reference code
 - `ref_name` - Reference name
 - `Service` - Medical service code
 - `provider_specialty` - Provider specialty

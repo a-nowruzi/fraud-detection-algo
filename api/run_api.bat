@@ -2,13 +2,13 @@
 chcp 65001 >nul
 echo.
 echo ========================================
-echo    Fraud Detection API
+echo    Fraud Detection API (Improved)
 echo ========================================
 echo.
 echo Initializing API...
 echo.
 
-REM بررسی وجود Python
+REM Check Python installation
 python --version >nul 2>&1
 if errorlevel 1 (
     echo ❌ Error: Python is not installed!
@@ -17,14 +17,37 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM بررسی وجود فایل‌های مورد نیاز
+REM Check for required files
 if not exist "app.py" (
     echo ❌ Error: app.py file not found!
+    echo Please ensure the improved application is properly set up.
     pause
     exit /b 1
 )
 
-REM فعال‌سازی محیط مجازی
+REM Check for required directories and files
+if not exist "services" (
+    echo ❌ Error: services directory not found!
+    echo Please ensure all modular components are present.
+    pause
+    exit /b 1
+)
+
+if not exist "routes" (
+    echo ❌ Error: routes directory not found!
+    echo Please ensure all modular components are present.
+    pause
+    exit /b 1
+)
+
+if not exist "config.py" (
+    echo ❌ Error: config.py file not found!
+    echo Please ensure all modular components are present.
+    pause
+    exit /b 1
+)
+
+REM Activate virtual environment
 echo 🔧 Activating virtual environment...
 if exist "venv\Scripts\activate.bat" (
     call venv\Scripts\activate.bat
@@ -37,7 +60,7 @@ if exist "venv\Scripts\activate.bat" (
 )
 echo.
 
-REM نصب وابستگی‌ها (در صورت نیاز)
+REM Install dependencies
 echo 📦 Installing dependencies...
 pip install -r requirements.txt
 if errorlevel 1 (
@@ -48,6 +71,7 @@ if errorlevel 1 (
 )
 echo ✅ Dependencies installed successfully.
 
+REM Check database connection
 echo 🔍 Checking database connection...
 python -c "from database_config import get_db_manager; db = get_db_manager(); print('✅ Database connection successful' if db.test_connection() else '❌ Database connection failed')"
 if errorlevel 1 (
@@ -59,8 +83,20 @@ if errorlevel 1 (
 )
 echo.
 
+REM Check application structure
+echo 🔍 Validating application structure...
+python -c "import sys; sys.path.append('.'); from app import create_app; print('✅ Application structure is valid')"
+if errorlevel 1 (
+    echo ❌ Error: Application structure validation failed!
+    echo Please check that all modules are properly configured.
+    pause
+    exit /b 1
+)
+echo ✅ Application structure validated successfully.
 echo.
-echo 🚀 Starting API...
+
+echo.
+echo 🚀 Starting Improved Fraud Detection API...
 echo.
 echo 📍 API will be available at:
 echo    http://localhost:5000
@@ -68,10 +104,16 @@ echo.
 echo 📋 For documentation (Swagger UI), go to:
 echo    http://localhost:5000/docs/
 echo.
+echo 🔍 Health check endpoint:
+echo    http://localhost:5000/health
+echo.
+echo ✅ Readiness check endpoint:
+echo    http://localhost:5000/ready
+echo.
 echo ⏹️ To stop the API, press Ctrl+C.
 echo.
 
-REM اجرای API
+REM Run the improved API
 python app.py
 
 echo.
