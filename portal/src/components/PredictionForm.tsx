@@ -76,7 +76,7 @@ const PredictionForm: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="card">
-        <h2 className="text-2xl font-bold mb-6 text-gray-900">تشخیص تقلب در نسخه پزشکی</h2>
+        <h2 className="text-2xl font-bold mb-6 text-gray-900">اطلاعات نسخه</h2>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -210,7 +210,7 @@ const PredictionForm: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>

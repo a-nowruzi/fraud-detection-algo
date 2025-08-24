@@ -254,10 +254,6 @@ const ChartsGallery: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">گالری نمودارها</h2>
-        <p className="text-gray-600">انتخاب کنید و نمودارهای تحلیلی مختلف را مشاهده کنید</p>
-      </div>
 
       {/* فیلتر دسته‌بندی */}
       <div className="flex flex-wrap gap-2">
