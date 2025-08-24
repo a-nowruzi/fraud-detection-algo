@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { BarChart3, Activity, Users, AlertTriangle, Cpu, Database } from 'lucide-react';
+import { Users, AlertTriangle, Database } from 'lucide-react';
 import { apiService, type SystemStats, type ModelInfo } from '../services/api';
 
 // تعریف نوع ApexCharts برای TypeScript
@@ -355,7 +354,7 @@ const Dashboard: React.FC = () => {
                     <div className="mt-0">
                       <div className="d-flex align-items-center">
                         <div className="avatar-sm m-auto">
-                          <span className="avatar-title rounded-circle bg-light-subtle text-dark font-size-16">
+                          <span className="avatar-title rounded-circle text-dark font-size-16">
                             1
                           </span>
                         </div>
@@ -372,7 +371,7 @@ const Dashboard: React.FC = () => {
                     <div className="mt-3">
                       <div className="d-flex align-items-center">
                         <div className="avatar-sm m-auto">
-                          <span className="avatar-title rounded-circle bg-light-subtle text-dark font-size-16">
+                          <span className="avatar-title rounded-circle text-dark font-size-16">
                             2
                           </span>
                         </div>
@@ -389,7 +388,7 @@ const Dashboard: React.FC = () => {
                     <div className="mt-3">
                       <div className="d-flex align-items-center">
                         <div className="avatar-sm m-auto">
-                          <span className="avatar-title rounded-circle bg-light-subtle text-dark font-size-16">
+                          <span className="avatar-title rounded-circle text-dark font-size-16">
                             3
                           </span>
                         </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { apiService } from '../services/api';
-import { BarChart3, PieChart, TrendingUp, MapPin, Users, Calendar, CreditCard, FileText, Activity, AlertTriangle } from 'lucide-react';
+import { BarChart3, TrendingUp, MapPin, Users, Calendar, CreditCard, FileText, Activity, AlertTriangle } from 'lucide-react';
 
 const ChartsGallery: React.FC = () => {
   const [selectedChart, setSelectedChart] = useState<string | null>(null);
