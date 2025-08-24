@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { apiService, type PredictionResult, type PrescriptionData } from '../services/api';
-import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, BarChart3 } from 'lucide-react';
 import RiskIndicators from './RiskIndicators';
 
 const PredictionForm: React.FC = () => {
@@ -15,6 +15,7 @@ const PredictionForm: React.FC = () => {
   });
 
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
+  const [riskChart, setRiskChart] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,10 +32,17 @@ const PredictionForm: React.FC = () => {
     setLoading(true);
     setError(null);
     setPrediction(null);
+    setRiskChart(null);
 
     try {
-      const result = await apiService.predictFraud(formData);
-      setPrediction(result);
+      // Get both prediction and risk indicators chart
+      const [predictionResult, riskIndicatorsResult] = await Promise.all([
+        apiService.predictFraud(formData),
+        apiService.getRiskIndicatorsChart(formData)
+      ]);
+      
+      setPrediction(predictionResult);
+      setRiskChart(riskIndicatorsResult.chart);
     } catch (err) {
       setError('خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.');
       console.error('Prediction error:', err);
@@ -228,7 +236,8 @@ const PredictionForm: React.FC = () => {
 
         {/* نمایش نتیجه */}
         {prediction && (
-          <div className="mt-8">
+          <div className="mt-8 space-y-6">
+            {/* نتیجه پیش‌بینی */}
             <div className={`p-6 rounded-lg border-2 ${
               prediction.is_fraud 
                 ? 'bg-danger-50 border-danger-200' 
@@ -267,14 +276,31 @@ const PredictionForm: React.FC = () => {
                   <div className="text-sm text-gray-600">کد پیش‌بینی</div>
                 </div>
               </div>
+            </div>
 
-                             {/* شاخص‌های ریسک */}
-               <div className="mt-6">
-                 <RiskIndicators 
-                   riskScores={prediction.risk_scores} 
-                   features={prediction.features} 
-                 />
-               </div>
+            {/* نمودار شاخص‌های ریسک */}
+            {riskChart && (
+              <div className="p-6 bg-white rounded-lg border border-gray-200">
+                <div className="flex items-center mb-4">
+                  <BarChart3 className="ml-2 h-5 w-5 text-primary-500" />
+                  <h3 className="text-lg font-semibold text-gray-900">نمودار شاخص‌های ریسک</h3>
+                </div>
+                <div className="text-center">
+                  <img
+                    src={`data:image/png;base64,${riskChart}`}
+                    alt="نمودار شاخص‌های ریسک"
+                    className="w-full h-auto rounded-lg shadow-sm max-w-2xl mx-auto"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* شاخص‌های ریسک */}
+            <div className="p-6 bg-white rounded-lg border border-gray-200">
+              <RiskIndicators 
+                riskScores={prediction.risk_scores} 
+                features={prediction.features} 
+              />
             </div>
           </div>
         )}

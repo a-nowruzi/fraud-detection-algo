@@ -36,8 +36,24 @@ export interface SystemStats {
   features_count: number;
 }
 
+export interface ModelInfo {
+  status: 'ready' | 'not_ready';
+  model_type: string;
+  training_samples: number;
+  feature_count: number;
+  max_features: number;
+  max_samples: number;
+  n_estimators: number;
+  contamination: number;
+}
+
 export interface ChartResponse {
   chart: string;
+}
+
+export interface RiskIndicatorsResponse {
+  chart: string;
+  prediction: PredictionResult;
 }
 
 export const apiService = {
@@ -53,13 +69,13 @@ export const apiService = {
     return response.data;
   },
 
-  // بررسی سلامت سیستم
-  healthCheck: async () => {
-    const response = await api.get('/health');
+  // دریافت اطلاعات مدل
+  getModelInfo: async (): Promise<ModelInfo> => {
+    const response = await api.get('/model-info');
     return response.data;
   },
 
-  // نمودارها
+  // نمودارهای اصلی
   getFraudByProvinceChart: async (): Promise<ChartResponse> => {
     const response = await api.get('/charts/fraud-by-province');
     return response.data;
@@ -75,11 +91,7 @@ export const apiService = {
     return response.data;
   },
 
-  getRiskIndicatorsChart: async (data: PrescriptionData): Promise<{ chart: string; prediction: PredictionResult }> => {
-    const response = await api.post('/charts/risk-indicators', data);
-    return response.data;
-  },
-
+  // نمودارهای نسبت تقلب
   getFraudRatioByAgeGroupChart: async (): Promise<ChartResponse> => {
     const response = await api.get('/charts/fraud-ratio-by-age-group');
     return response.data;
@@ -95,6 +107,7 @@ export const apiService = {
     return response.data;
   },
 
+  // نمودارهای زمانی
   getFraudCountsByDateChart: async (): Promise<ChartResponse> => {
     const response = await api.get('/charts/fraud-counts-by-date');
     return response.data;
@@ -105,6 +118,7 @@ export const apiService = {
     return response.data;
   },
 
+  // نمودارهای بیمه و اداری
   getFraudRatioByInsCoverChart: async (): Promise<ChartResponse> => {
     const response = await api.get('/charts/fraud-ratio-by-ins-cover');
     return response.data;
@@ -117,6 +131,12 @@ export const apiService = {
 
   getFraudRatioByMedicalRecordTypeChart: async (): Promise<ChartResponse> => {
     const response = await api.get('/charts/fraud-ratio-by-medical-record-type');
+    return response.data;
+  },
+
+  // نمودارهای شاخص ریسک
+  getRiskIndicatorsChart: async (data: PrescriptionData): Promise<RiskIndicatorsResponse> => {
+    const response = await api.post('/charts/risk-indicators', data);
     return response.data;
   },
 

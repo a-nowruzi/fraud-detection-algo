@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { apiService, type SystemStats } from '../services/api';
+import { apiService, type SystemStats, type ModelInfo } from '../services/api';
 
 // تعریف نوع ApexCharts برای TypeScript
 declare global {
@@ -10,11 +10,13 @@ declare global {
 
 const StatsPage: React.FC = () => {
   const [stats, setStats] = useState<SystemStats | null>(null);
+  const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [chartsReady, setChartsReady] = useState(false);
   const systemPerformanceChartRef = useRef<HTMLDivElement>(null);
   const prescriptionDistributionChartRef = useRef<HTMLDivElement>(null);
+  const modelInfoChartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchStats();
@@ -22,10 +24,10 @@ const StatsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (stats && chartsReady && systemPerformanceChartRef.current && prescriptionDistributionChartRef.current) {
+    if (stats && modelInfo && chartsReady && systemPerformanceChartRef.current && prescriptionDistributionChartRef.current && modelInfoChartRef.current) {
       initializeCharts();
     }
-  }, [stats, chartsReady]);
+  }, [stats, modelInfo, chartsReady]);
 
   const checkApexCharts = () => {
     const checkInterval = setInterval(() => {
@@ -47,8 +49,12 @@ const StatsPage: React.FC = () => {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const data = await apiService.getStats();
-      setStats(data);
+      const [statsData, modelData] = await Promise.all([
+        apiService.getStats(),
+        apiService.getModelInfo()
+      ]);
+      setStats(statsData);
+      setModelInfo(modelData);
     } catch (err) {
       setError('خطا در دریافت آمار سیستم');
       console.error('Stats error:', err);
@@ -58,7 +64,7 @@ const StatsPage: React.FC = () => {
   };
 
   const initializeCharts = () => {
-    if (!stats) return;
+    if (!stats || !modelInfo) return;
 
     // تاخیر کوتاه برای اطمینان از بارگذاری کامل ApexCharts
     setTimeout(() => {
@@ -207,6 +213,95 @@ const StatsPage: React.FC = () => {
           console.error('خطا در ایجاد نمودار توزیع نسخه‌ها:', error);
         }
       }
+
+      // نمودار اطلاعات مدل
+      if (modelInfoChartRef.current && window.ApexCharts) {
+        const modelInfoOptions = {
+          series: [{
+            name: 'نمونه‌های آموزشی',
+            data: [modelInfo.training_samples]
+          }, {
+            name: 'تعداد ویژگی‌ها',
+            data: [modelInfo.feature_count]
+          }, {
+            name: 'حداکثر ویژگی‌ها',
+            data: [modelInfo.max_features]
+          }],
+          chart: {
+            type: 'bar',
+            height: 250,
+            toolbar: {
+              show: false
+            },
+            fontFamily: 'Estedad, sans-serif'
+          },
+          plotOptions: {
+            bar: {
+              horizontal: false,
+              columnWidth: '55%',
+              endingShape: 'rounded'
+            },
+          },
+          dataLabels: {
+            enabled: false
+          },
+          stroke: {
+            show: true,
+            width: 2,
+            colors: ['transparent']
+          },
+          xaxis: {
+            categories: ['اطلاعات مدل'],
+            labels: {
+              style: {
+                fontFamily: 'Estedad, sans-serif'
+              }
+            }
+          },
+          yaxis: {
+            title: {
+              text: 'تعداد',
+              style: {
+                fontFamily: 'Estedad, sans-serif'
+              }
+            },
+            labels: {
+              style: {
+                fontFamily: 'Estedad, sans-serif'
+              }
+            }
+          },
+          fill: {
+            opacity: 1
+          },
+          tooltip: {
+            y: {
+              formatter: function (val: number) {
+                return val.toLocaleString('fa-IR')
+              }
+            }
+          },
+          colors: ['#5156be', '#34c38f', '#f46a6a'],
+          legend: {
+            fontFamily: 'Estedad, sans-serif',
+            labels: {
+              colors: '#6c757d'
+            }
+          }
+        };
+
+        // حذف نمودار قبلی اگر وجود دارد
+        if (modelInfoChartRef.current.querySelector('.apexcharts-canvas')) {
+          modelInfoChartRef.current.innerHTML = '';
+        }
+
+        try {
+          const chart = new window.ApexCharts(modelInfoChartRef.current, modelInfoOptions);
+          chart.render();
+        } catch (error) {
+          console.error('خطا در ایجاد نمودار اطلاعات مدل:', error);
+        }
+      }
     }, 100);
   };
 
@@ -235,7 +330,7 @@ const StatsPage: React.FC = () => {
     );
   }
 
-  if (!stats) {
+  if (!stats || !modelInfo) {
     return null;
   }
 
@@ -261,7 +356,6 @@ const StatsPage: React.FC = () => {
       color: 'primary',
       bgColor: 'primary-subtle',
       textColor: 'primary',
-      changeType: 'success',
     },
     {
       title: 'نسخه‌های سالم',
@@ -270,7 +364,6 @@ const StatsPage: React.FC = () => {
       color: 'success',
       bgColor: 'success-subtle',
       textColor: 'success',
-      changeType: 'success',
     },
     {
       title: 'نسخه‌های مشکوک',
@@ -279,7 +372,6 @@ const StatsPage: React.FC = () => {
       color: 'danger',
       bgColor: 'danger-subtle',
       textColor: 'danger',
-      changeType: 'danger',
     },
     {
       title: 'درصد تقلب',
@@ -288,14 +380,51 @@ const StatsPage: React.FC = () => {
       color: 'warning',
       bgColor: 'warning-subtle',
       textColor: 'warning',
-      changeType: 'success'
+    },
+  ];
+
+  const modelCards = [
+    {
+      title: 'وضعیت مدل',
+      value: modelInfo.status === 'ready' ? 'آماده' : 'در حال بارگذاری',
+      icon: 'mdi mdi-cpu',
+      color: modelInfo.status === 'ready' ? 'success' : 'warning',
+      bgColor: modelInfo.status === 'ready' ? 'success-subtle' : 'warning-subtle',
+      textColor: modelInfo.status === 'ready' ? 'success' : 'warning',
+    },
+    {
+      title: 'نوع مدل',
+      value: modelInfo.model_type,
+      icon: 'mdi mdi-brain',
+      color: 'info',
+      bgColor: 'info-subtle',
+      textColor: 'info',
+    },
+    {
+      title: 'نمونه‌های آموزشی',
+      value: modelInfo.training_samples.toLocaleString('fa-IR'),
+      icon: 'mdi mdi-database',
+      color: 'primary',
+      bgColor: 'primary-subtle',
+      textColor: 'primary',
+    },
+    {
+      title: 'تعداد ویژگی‌ها',
+      value: modelInfo.feature_count.toString(),
+      icon: 'mdi mdi-chart-line',
+      color: 'secondary',
+      bgColor: 'secondary-subtle',
+      textColor: 'secondary',
     },
   ];
 
   return (
     <>
-      {/* کارت‌های آمار */}
-      <div className="row">
+      {/* کارت‌های آمار سیستم */}
+      <div className="row mb-4">
+        <div className="col-12">
+          <h4 className="mb-3">آمار سیستم</h4>
+        </div>
         {statCards.map((card, index) => (
           <div key={index} className="col-xl-3 col-md-6">
             <div className="card card-h-100">
@@ -314,7 +443,32 @@ const StatsPage: React.FC = () => {
         ))}
       </div>
 
-      {/* نمودار اصلی */}
+      {/* کارت‌های اطلاعات مدل */}
+      <div className="row mb-4">
+        <div className="col-12">
+          <h4 className="mb-3">اطلاعات مدل</h4>
+        </div>
+        {modelCards.map((card, index) => (
+          <div key={index} className="col-xl-3 col-md-6">
+            <div className="card card-h-100">
+              <div className="card-body">
+                <div className="row align-items-center">
+                  <div className="col-12">
+                    <span className="text-muted mb-3 lh-1 d-block text-truncate">{card.title}</span>
+                    <h4 className="mb-3">
+                      <span className={`badge bg-${card.bgColor} text-${card.textColor}`}>
+                        {card.value}
+                      </span>
+                    </h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* نمودارهای اصلی */}
       <div className="row">
         <div className="col-xl-8">
           <div className="card">
@@ -416,6 +570,66 @@ const StatsPage: React.FC = () => {
                     aria-valuenow={(stats.fraud_prescriptions / stats.total_prescriptions) * 100}
                     aria-valuemin={0} aria-valuemax={100}>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* نمودار اطلاعات مدل */}
+      <div className="row mt-4">
+        <div className="col-xl-6">
+          <div className="card">
+            <div className="card-body">
+              <div className="d-flex flex-wrap align-items-center mb-4">
+                <h5 className="card-title me-2">اطلاعات مدل</h5>
+              </div>
+              <div ref={modelInfoChartRef} style={{ height: '250px' }}></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-xl-6">
+          <div className="card">
+            <div className="card-body">
+              <div className="d-flex flex-wrap align-items-center mb-4">
+                <h5 className="card-title me-2">جزئیات مدل</h5>
+              </div>
+              <div className="space-y-3">
+                <div className="d-flex justify-between items-center">
+                  <span className="text-gray-600">نوع مدل:</span>
+                  <span className="font-medium">{modelInfo.model_type}</span>
+                </div>
+                <div className="d-flex justify-between items-center">
+                  <span className="text-gray-600">وضعیت:</span>
+                  <span className={`badge ${modelInfo.status === 'ready' ? 'bg-success' : 'bg-warning'}`}>
+                    {modelInfo.status === 'ready' ? 'آماده' : 'در حال بارگذاری'}
+                  </span>
+                </div>
+                <div className="d-flex justify-between items-center">
+                  <span className="text-gray-600">نمونه‌های آموزشی:</span>
+                  <span className="font-medium">{modelInfo.training_samples.toLocaleString('fa-IR')}</span>
+                </div>
+                <div className="d-flex justify-between items-center">
+                  <span className="text-gray-600">تعداد ویژگی‌ها:</span>
+                  <span className="font-medium">{modelInfo.feature_count}</span>
+                </div>
+                <div className="d-flex justify-between items-center">
+                  <span className="text-gray-600">حداکثر ویژگی‌ها:</span>
+                  <span className="font-medium">{modelInfo.max_features}</span>
+                </div>
+                <div className="d-flex justify-between items-center">
+                  <span className="text-gray-600">حداکثر نمونه‌ها:</span>
+                  <span className="font-medium">{modelInfo.max_samples}</span>
+                </div>
+                <div className="d-flex justify-between items-center">
+                  <span className="text-gray-600">تعداد درختان:</span>
+                  <span className="font-medium">{modelInfo.n_estimators}</span>
+                </div>
+                <div className="d-flex justify-between items-center">
+                  <span className="text-gray-600">نرخ آلودگی:</span>
+                  <span className="font-medium">{(modelInfo.contamination * 100).toFixed(2)}%</span>
                 </div>
               </div>
             </div>

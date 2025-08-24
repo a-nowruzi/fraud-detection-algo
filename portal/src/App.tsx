@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import PredictPage from './pages/PredictPage';
 import ChartsPage from './pages/ChartsPage';
 import StatsPage from './pages/StatsPage';
+import ApiTestPage from './pages/ApiTestPage';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route path="/predict" element={<PredictPage />} />
           <Route path="/charts" element={<ChartsPage />} />
           <Route path="/stats" element={<StatsPage />} />
+          <Route path="/api-test" element={<ApiTestPage />} />
         </Routes>
       </Layout>
     </Router>
