@@ -24,21 +24,6 @@ if not exist "app.py" (
     exit /b 1
 )
 
-if not exist "DataSEt_FD7.csv" (
-    echo ❌ Error: DataSEt_FD7.csv file not found!
-    pause
-    exit /b 1
-)
-
-if not exist "specialties.csv" (
-    echo ❌ Error: specialties.csv file not found!
-    pause
-    exit /b 1
-)
-
-echo ✅ All required files are present.
-echo.
-
 REM فعال‌سازی محیط مجازی
 echo 🔧 Activating virtual environment...
 if exist "venv\Scripts\activate.bat" (
@@ -62,6 +47,17 @@ if errorlevel 1 (
     exit /b 1
 )
 echo ✅ Dependencies installed successfully.
+
+echo 🔍 Checking database connection...
+python -c "from database_config import get_db_manager; db = get_db_manager(); print('✅ Database connection successful' if db.test_connection() else '❌ Database connection failed')"
+if errorlevel 1 (
+    echo ❌ Error: Database connection failed!
+    echo Please check your database configuration in database_config.py
+    echo Make sure the database server is running and accessible.
+    pause
+    exit /b 1
+)
+echo.
 
 echo.
 echo 🚀 Starting API...

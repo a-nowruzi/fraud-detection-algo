@@ -35,6 +35,10 @@ mypy>=1.0.0,<2.0.0
 psutil>=5.9.0,<6.0.0
 memory-profiler>=0.61.0,<1.0.0
 
+# Database Dependencies
+pymysql>=1.1.0,<2.0.0
+sqlalchemy>=2.0.0,<3.0.0
+
 # Jupyter and Development (Optional)
 jupyter>=1.0.0,<2.0.0
 ipykernel>=6.0.0,<7.0.0

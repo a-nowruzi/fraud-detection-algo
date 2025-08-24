@@ -31,6 +31,9 @@ from ftr_8_1_function import percent_diff_ser_patient_nf
 from ftr_8_2_function import percent_diff_serv_nf
 from ftr_9_function import ratio_nf
 
+# Import database configuration
+from database_config import get_db_manager
+
 # Suppress warnings
 warnings.filterwarnings('ignore')
 pd.set_option('display.max_column', 50)
@@ -92,10 +95,23 @@ class AppState:
 app_state = AppState()
 
 def load_and_prepare_data():
-    """Load and prepare the dataset"""
+    """Load and prepare the dataset from MariaDB"""
     try:
-        print("Loading dataset...")
-        app_state.data = pd.read_csv('DataSEt_FD7.csv')
+        print("Connecting to database...")
+        db_manager = get_db_manager()
+        
+        # Test database connection
+        if not db_manager.test_connection():
+            raise Exception("Failed to connect to database")
+        
+        print("Loading main dataset from database...")
+        # Load main dataset from database table (assuming table name is 'fraud_data')
+        app_state.data = db_manager.load_data_from_db('Prescriptions')
+        
+        if app_state.data is None or app_state.data.empty:
+            raise Exception("No data found in database table 'Prescriptions'")
+        
+        print(f"Loaded {len(app_state.data)} records from database")
         
         # Use utility functions for cleaning numeric columns
         from utils import clean_numeric_column, memory_usage_optimizer
@@ -109,10 +125,15 @@ def load_and_prepare_data():
         app_state.data['provider_name'] = app_state.data['provider_name'].fillna(app_state.data['ref_code'])
         app_state.data['provider_name'] = app_state.data['provider_name'].fillna(app_state.data['ref_name'])
         
-        # Load specialties
-        specialties = pd.read_csv('specialties.csv')
-        merged_data = app_state.data.merge(specialties, on='Service', how='left')
-        app_state.data['provider_specialty'] = app_state.data['provider_specialty'].combine_first(merged_data['specialty'])
+        # Load specialties from database (assuming table name is 'specialties')
+        print("Loading specialties from database...")
+        specialties = db_manager.load_data_from_db('Specialties')
+        
+        if specialties is not None and not specialties.empty:
+            merged_data = app_state.data.merge(specialties, on='Service', how='left')
+            app_state.data['provider_specialty'] = app_state.data['provider_specialty'].combine_first(merged_data['specialty'])
+        else:
+            print("Warning: No specialties data found in database, using existing provider_specialty column")
         
         # Add age column using improved function
         app_state.data['age'] = app_state.data['jalali_date'].apply(calculate_age)
