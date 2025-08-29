@@ -1,6 +1,6 @@
 """
-Memory-optimized Flask application for fraud detection API
-اپلیکیشن Flask بهینه‌سازی شده حافظه برای API تشخیص تقلب
+Memory-optimized Flask application for fraud detection API (Gunicorn Compatible)
+اپلیکیشن Flask بهینه‌سازی شده حافظه برای API تشخیص تقلب (سازگار با Gunicorn)
 """
 
 import os
@@ -10,9 +10,11 @@ import sys
 os.environ.setdefault('CHUNK_SIZE', '5000')
 os.environ.setdefault('MAX_CACHE_SIZE', '5')
 os.environ.setdefault('ENABLE_STREAMING', 'True')
-os.environ.setdefault('ENABLE_ASYNC_INIT', 'True')
+os.environ.setdefault('ENABLE_ASYNC_INIT', 'False')  # Disabled for Gunicorn
 os.environ.setdefault('MEMORY_CLEANUP_INTERVAL', '300')
 os.environ.setdefault('MAX_MEMORY_USAGE_MB', '2048')
+os.environ.setdefault('SKIP_DB_INIT', 'False')
+os.environ.setdefault('GUNICORN_MODE', 'True')  # Enable Gunicorn optimizations
 
 from flask import Flask, jsonify, render_template_string
 from flask_cors import CORS
@@ -140,7 +142,7 @@ class LazyDataLoader:
             gc.collect()
 
 class MemoryOptimizedFraudDetectionApp:
-    """Memory-optimized main application class for fraud detection API"""
+    """Memory-optimized main application class for fraud detection API (Gunicorn compatible)"""
     
     def __init__(self):
         self.app = Flask(__name__)
@@ -149,11 +151,13 @@ class MemoryOptimizedFraudDetectionApp:
         self.data_loader = LazyDataLoader()
         self._services_initialized = False
         self._initialization_lock = threading.Lock()
-        self._initialization_thread = None
         
         self._configure_app()
         self._register_blueprints()
         self._register_error_handlers()
+        
+        # Initialize services immediately (synchronous for Gunicorn compatibility)
+        self._initialize_services_sync()
     
     def _configure_app(self):
         """Configure Flask application"""
@@ -214,35 +218,53 @@ class MemoryOptimizedFraudDetectionApp:
         memory_mb = process.memory_info().rss / 1024 / 1024
         logger.info(f"Memory usage at {stage}: {memory_mb:.2f} MB")
     
-    def _initialize_services_async(self):
-        """Initialize services asynchronously to avoid blocking startup"""
+    def _initialize_services_sync(self):
+        """Initialize services synchronously (Gunicorn compatible)"""
         try:
-            logger.info("Starting asynchronous service initialization...")
-            self._log_memory_usage("before_async_init")
+            logger.info("Starting synchronous service initialization for Gunicorn...")
+            self._log_memory_usage("before_sync_init")
+            
+            # Check if we should skip database initialization
+            skip_db_init = os.getenv('SKIP_DB_INIT', 'False').lower() == 'true'
+            
+            if not skip_db_init:
+                # Test database connection first
+                logger.info("Testing database connection...")
+                if not self.data_loader.db_manager.test_connection():
+                    logger.error("Database connection failed - services will not be available")
+                    return
+            else:
+                logger.info("Skipping database initialization (SKIP_DB_INIT=True)")
+                return
             
             # Initialize prediction service with streaming data
+            logger.info("Initializing prediction service...")
             self.prediction_service = PredictionService()
             
             # Train model with streaming data
+            logger.info("Starting model training...")
             self._train_model_with_streaming()
             
             # Initialize chart service
             if self.prediction_service.is_ready():
+                logger.info("Initializing chart service...")
                 self.chart_service = ChartService(self.prediction_service.data_final)
                 
                 # Initialize route services
+                logger.info("Initializing route services...")
                 init_prediction_service(self.prediction_service)
                 init_chart_services(self.chart_service, self.prediction_service)
                 
                 self._services_initialized = True
-                logger.info("Asynchronous service initialization completed successfully")
+                logger.info("Synchronous service initialization completed successfully")
             else:
                 logger.error("Prediction service failed to initialize properly")
             
-            self._log_memory_usage("after_async_init")
+            self._log_memory_usage("after_sync_init")
             
         except Exception as e:
-            logger.error(f"Error in asynchronous service initialization: {str(e)}")
+            logger.error(f"Error in synchronous service initialization: {str(e)}")
+            logger.error("Application will continue without prediction services")
             self.prediction_service = None
             self.chart_service = None
     
@@ -253,46 +275,69 @@ class MemoryOptimizedFraudDetectionApp:
             
             # Get total chunks
             total_chunks = self.data_loader.get_total_chunks()
+            if total_chunks == 0:
+                logger.error("No data chunks found - check database connection")
+                raise Exception("No data available for training")
+                
             logger.info(f"Total chunks to process: {total_chunks}")
             
             # Process chunks and collect features
             all_features = []
             all_metadata = []
+            processed_chunks = 0
             
             for chunk_id in range(total_chunks):
-                chunk = self.data_loader.get_data_chunk(chunk_id)
-                if chunk is not None and not chunk.empty:
-                    # Extract features from chunk
-                    features = self._extract_features_from_chunk(chunk)
-                    if features is not None:
-                        all_features.append(features)
-                        all_metadata.append(chunk[['Adm_date', 'gender', 'age', 'Service', 'province',
-                                                 'Ins_Cover', 'Invice-type', 'Type_Medical_Record',
-                                                 'provider_name', 'ID']].copy())
+                try:
+                    logger.info(f"Processing chunk {chunk_id + 1}/{total_chunks}")
+                    chunk = self.data_loader.get_data_chunk(chunk_id)
                     
-                    # Clear chunk from cache to save memory
-                    self.data_loader.clear_cache()
-                    
-                    # Log progress
-                    if (chunk_id + 1) % 10 == 0:
-                        logger.info(f"Processed {chunk_id + 1}/{total_chunks} chunks")
-                        self._log_memory_usage(f"chunk_{chunk_id + 1}")
+                    if chunk is not None and not chunk.empty:
+                        # Extract features from chunk
+                        features = self._extract_features_from_chunk(chunk)
+                        if features is not None:
+                            all_features.append(features)
+                            all_metadata.append(chunk[['Adm_date', 'gender', 'age', 'Service', 'province',
+                                                     'Ins_Cover', 'Invice-type', 'Type_Medical_Record',
+                                                     'provider_name', 'ID']].copy())
+                            processed_chunks += 1
+                        
+                        # Clear chunk from cache to save memory
+                        self.data_loader.clear_cache()
+                        
+                        # Log progress
+                        if (chunk_id + 1) % 5 == 0:
+                            logger.info(f"Processed {chunk_id + 1}/{total_chunks} chunks")
+                            self._log_memory_usage(f"chunk_{chunk_id + 1}")
+                    else:
+                        logger.warning(f"Chunk {chunk_id + 1} is empty or None")
+                        
+                except Exception as chunk_error:
+                    logger.error(f"Error processing chunk {chunk_id + 1}: {str(chunk_error)}")
+                    continue
+            
+            # Check if we have enough data
+            if len(all_features) == 0:
+                raise Exception("No features extracted from any chunks")
+            
+            if len(all_features) < total_chunks * 0.5:  # Less than 50% of chunks processed
+                logger.warning(f"Only {len(all_features)}/{total_chunks} chunks processed successfully")
+            
+            logger.info(f"Successfully processed {len(all_features)} chunks")
             
             # Combine all features
-            if all_features:
-                combined_features = pd.concat(all_features, ignore_index=True)
-                combined_metadata = pd.concat(all_metadata, ignore_index=True)
-                
-                # Train model
-                self.prediction_service.train_model_streaming(combined_features, combined_metadata)
-                
-                # Clean up
-                del all_features, all_metadata, combined_features, combined_metadata
-                gc.collect()
-                
-                logger.info("Model training with streaming data completed")
-            else:
-                raise Exception("No features extracted from data")
+            logger.info("Combining features...")
+            combined_features = pd.concat(all_features, ignore_index=True)
+            combined_metadata = pd.concat(all_metadata, ignore_index=True)
+            
+            # Train model
+            logger.info("Training Isolation Forest model...")
+            self.prediction_service.train_model_streaming(combined_features, combined_metadata)
+            
+            # Clean up
+            del all_features, all_metadata, combined_features, combined_metadata
+            gc.collect()
+            
+            logger.info("Model training with streaming data completed successfully")
                 
         except Exception as e:
             logger.error(f"Error training model with streaming data: {str(e)}")
@@ -327,14 +372,6 @@ class MemoryOptimizedFraudDetectionApp:
             logger.error(f"Error extracting features from chunk: {str(e)}")
             return None
     
-    def start_async_initialization(self):
-        """Start asynchronous service initialization"""
-        if self._initialization_thread is None or not self._initialization_thread.is_alive():
-            self._initialization_thread = threading.Thread(target=self._initialize_services_async)
-            self._initialization_thread.daemon = True
-            self._initialization_thread.start()
-            logger.info("Started asynchronous service initialization")
-    
     def is_ready(self) -> bool:
         """Check if the application is ready to serve requests"""
         return self._services_initialized and self.prediction_service is not None and self.prediction_service.is_ready()
@@ -362,7 +399,6 @@ class MemoryOptimizedFraudDetectionApp:
                 .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
                 .status.ready { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
                 .status.not-ready { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-                .status.loading { background: #cce5ff; border: 1px solid #b3d9ff; color: #004085; }
                 .config { background: #e8f4fd; padding: 15px; border-radius: 5px; margin: 15px 0; }
             </style>
         </head>
@@ -370,8 +406,8 @@ class MemoryOptimizedFraudDetectionApp:
             <div class="container">
                 <h1>🔍 API تشخیص تقلب پزشکی (بهینه‌سازی شده)</h1>
                 
-                <div class="status """ + ("ready" if self.is_ready() else "loading" if self._initialization_thread and self._initialization_thread.is_alive() else "not-ready") + """">
-                    <strong>وضعیت سیستم:</strong> """ + ("آماده" if self.is_ready() else "در حال بارگذاری" if self._initialization_thread and self._initialization_thread.is_alive() else "در انتظار") + """
+                <div class="status """ + ("ready" if self.is_ready() else "not-ready") + """">
+                    <strong>وضعیت سیستم:</strong> """ + ("آماده" if self.is_ready() else "در انتظار") + """
                 </div>
                 
                 <div class="warning">
@@ -385,7 +421,7 @@ class MemoryOptimizedFraudDetectionApp:
                         <li>حداکثر کش: """ + str(memory_config.max_cache_size) + """ قطعه</li>
                         <li>حداکثر حافظه: """ + str(memory_config.max_memory_usage_mb) + """ مگابایت</li>
                         <li>پردازش جریانی: """ + ("فعال" if memory_config.enable_streaming else "غیرفعال") + """</li>
-                        <li>راه‌اندازی غیرهمزمان: """ + ("فعال" if memory_config.enable_async_init else "غیرفعال") + """</li>
+                        <li>حالت Gunicorn: فعال</li>
                     </ul>
                 </div>
                 
@@ -481,7 +517,7 @@ class MemoryOptimizedFraudDetectionApp:
                 'status': 'healthy',
                 'model_loaded': self.prediction_service is not None and self.prediction_service.is_ready(),
                 'services_initialized': self._services_initialized,
-                'initialization_running': self._initialization_thread is not None and self._initialization_thread.is_alive(),
+                'gunicorn_mode': True,
                 'timestamp': datetime.now().isoformat()
             })
         
@@ -495,9 +531,9 @@ class MemoryOptimizedFraudDetectionApp:
                 'services': {
                     'prediction_service': self.prediction_service is not None,
                     'chart_service': self.chart_service is not None,
-                    'services_initialized': self._services_initialized,
-                    'initialization_running': self._initialization_thread is not None and self._initialization_thread.is_alive()
+                    'services_initialized': self._services_initialized
                 },
+                'gunicorn_mode': True,
                 'timestamp': datetime.now().isoformat()
             })
         
@@ -510,14 +546,13 @@ class MemoryOptimizedFraudDetectionApp:
             return jsonify({
                 'memory_usage_mb': round(memory_mb, 2),
                 'services_initialized': self._services_initialized,
-                'initialization_running': self._initialization_thread is not None and self._initialization_thread.is_alive(),
                 'cache_size': len(self.data_loader._data_cache),
                 'memory_config': {
                     'chunk_size': memory_config.chunk_size,
                     'max_cache_size': memory_config.max_cache_size,
                     'max_memory_usage_mb': memory_config.max_memory_usage_mb,
                     'enable_streaming': memory_config.enable_streaming,
-                    'enable_async_init': memory_config.enable_async_init
+                    'gunicorn_mode': True
                 },
                 'timestamp': datetime.now().isoformat()
             })
@@ -534,7 +569,7 @@ class MemoryOptimizedFraudDetectionApp:
     
     def run(self, host: str = None, port: int = None, debug: bool = None):
         """
-        Run the Flask application
+        Run the Flask application (for development only)
         
         Args:
             host: Host to bind to
@@ -546,13 +581,8 @@ class MemoryOptimizedFraudDetectionApp:
         port = port or app_config.port
         debug = debug if debug is not None else app_config.debug
         
-        # Start asynchronous initialization
-        self.start_async_initialization()
-        
         logger.info(f"Starting memory-optimized Flask server on {host}:{port}")
-        logger.info("The application will start immediately and initialize services asynchronously")
-        logger.info("Check /ready endpoint to monitor initialization progress")
-        logger.info("Check /memory endpoint to monitor memory usage")
+        logger.info("Services initialized synchronously")
         
         self.app.run(host=host, port=port, debug=debug)
 
@@ -576,9 +606,9 @@ if __name__ == '__main__':
     print("Creating and configuring memory-optimized application...")
     fraud_app = create_app()
     
-    print("Starting Flask server with memory optimization...")
-    print("The application will start immediately and initialize services asynchronously")
-    print("Check /ready endpoint to monitor initialization progress")
+    print("Starting Flask server...")
+    print("Services initialized synchronously")
+    print("Check /ready endpoint to verify services are ready")
     print("Check /memory endpoint to monitor memory usage")
     print()
     
