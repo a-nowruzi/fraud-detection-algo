@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 # Database configuration
 DB_CONFIG = {
-    'host': '91.107.174.199',
+    'host': 'localhost',
     'database': 'testdb',
-    'user': 'testuser',
-    'password': 'testpass123',
+    'user': 'admin',
+    'password': 'Alireza',
     'port': 3306,
     'charset': 'utf8mb4',
     'autocommit': True

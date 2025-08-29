@@ -10,10 +10,10 @@ from dataclasses import dataclass
 @dataclass
 class DatabaseConfig:
     """Database configuration settings"""
-    host: str = os.getenv('DB_HOST', '91.107.174.199')
+    host: str = os.getenv('DB_HOST', 'localhost')
     database: str = os.getenv('DB_NAME', 'testdb')
-    user: str = os.getenv('DB_USER', 'testuser')
-    password: str = os.getenv('DB_PASSWORD', 'testpass123')
+    user: str = os.getenv('DB_USER', 'admin')
+    password: str = os.getenv('DB_PASSWORD', 'Alireza')
     port: int = int(os.getenv('DB_PORT', '3306'))
     charset: str = 'utf8mb4'
     autocommit: bool = True

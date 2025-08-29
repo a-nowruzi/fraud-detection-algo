@@ -396,3 +396,6 @@ if __name__ == '__main__':
     
     print("Starting Flask server...")
     fraud_app.run()
+
+application_instance = create_app()
+app = application_instance.app
