@@ -1,6 +1,6 @@
 import React from 'react';
 import ChartsGallery from '../components/ChartsGallery';
-import { BarChart3, TrendingUp, Filter, Search, Grid, List } from 'lucide-react';
+import { BarChart3, TrendingUp, Filter, Search } from 'lucide-react';
 
 const ChartsPage: React.FC = () => {
   return (

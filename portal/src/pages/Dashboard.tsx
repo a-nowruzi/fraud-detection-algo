@@ -177,7 +177,7 @@ const Dashboard: React.FC = () => {
           },
           dataLabels: {
             enabled: true,
-            formatter: function (val: number, opts: any) {
+            formatter: function (opts: any) {
               return opts.w.globals.seriesTotals[opts.seriesIndex].toLocaleString('fa-IR');
             },
             style: {
