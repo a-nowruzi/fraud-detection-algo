@@ -9,6 +9,10 @@ from typing import Union, Dict, Any, List, Optional, Tuple
 import logging
 from functools import wraps
 import time
+import psutil
+import os
+import gc
+from config import memory_config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -102,14 +106,110 @@ def performance_monitor(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         start_time = time.time()
+        start_memory = get_memory_usage_mb()
+        
         try:
             result = func(*args, **kwargs)
             execution_time = time.time() - start_time
-            logger.info(f"{func.__name__} executed in {execution_time:.4f} seconds")
+            end_memory = get_memory_usage_mb()
+            memory_diff = end_memory - start_memory
+            
+            logger.info(f"{func.__name__} executed in {execution_time:.4f} seconds, "
+                       f"memory change: {memory_diff:+.2f} MB")
             return result
         except Exception as e:
             execution_time = time.time() - start_time
             logger.error(f"{func.__name__} failed after {execution_time:.4f} seconds: {str(e)}")
+            raise
+    
+    return wrapper
+
+def get_memory_usage_mb() -> float:
+    """
+    Get current memory usage in MB
+    
+    Returns:
+        Memory usage in MB
+    """
+    try:
+        process = psutil.Process(os.getpid())
+        return process.memory_info().rss / 1024 / 1024
+    except Exception as e:
+        logger.error(f"Error getting memory usage: {str(e)}")
+        return 0.0
+
+def check_memory_limit() -> bool:
+    """
+    Check if memory usage is within limits
+    
+    Returns:
+        True if within limits, False otherwise
+    """
+    current_memory = get_memory_usage_mb()
+    max_memory = memory_config.max_memory_usage_mb
+    
+    if current_memory > max_memory:
+        logger.warning(f"Memory usage ({current_memory:.2f} MB) exceeds limit ({max_memory} MB)")
+        return False
+    
+    return True
+
+def force_memory_cleanup():
+    """
+    Force memory cleanup by running garbage collection
+    """
+    try:
+        logger.info("Forcing memory cleanup...")
+        before_memory = get_memory_usage_mb()
+        
+        # Run garbage collection multiple times
+        for i in range(3):
+            gc.collect()
+        
+        after_memory = get_memory_usage_mb()
+        memory_freed = before_memory - after_memory
+        
+        logger.info(f"Memory cleanup completed. Freed {memory_freed:.2f} MB")
+        
+    except Exception as e:
+        logger.error(f"Error during memory cleanup: {str(e)}")
+
+def memory_monitor(func):
+    """
+    Decorator to monitor and manage memory usage
+    
+    Args:
+        func: Function to monitor
+        
+    Returns:
+        Wrapped function with memory monitoring
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Check memory before execution
+        if not check_memory_limit():
+            force_memory_cleanup()
+        
+        start_memory = get_memory_usage_mb()
+        
+        try:
+            result = func(*args, **kwargs)
+            
+            # Check memory after execution
+            end_memory = get_memory_usage_mb()
+            memory_used = end_memory - start_memory
+            
+            logger.info(f"{func.__name__} memory usage: {memory_used:+.2f} MB")
+            
+            # Force cleanup if memory usage is high
+            if end_memory > memory_config.max_memory_usage_mb * 0.8:
+                force_memory_cleanup()
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"{func.__name__} failed: {str(e)}")
+            force_memory_cleanup()
             raise
     
     return wrapper
@@ -176,6 +276,7 @@ def validate_date_range(date_series: pd.Series, min_year: int = 1300,
         logger.error(f"Error validating date range: {str(e)}")
         raise
 
+@memory_monitor
 def memory_usage_optimizer(df: pd.DataFrame) -> pd.DataFrame:
     """
     Optimize DataFrame memory usage by downcasting numeric types
@@ -211,3 +312,75 @@ def memory_usage_optimizer(df: pd.DataFrame) -> pd.DataFrame:
     except Exception as e:
         logger.error(f"Error optimizing memory usage: {str(e)}")
         return df
+
+def optimize_dataframe_chunk(df: pd.DataFrame, chunk_name: str = "chunk") -> pd.DataFrame:
+    """
+    Optimize a DataFrame chunk for memory efficiency
+    
+    Args:
+        df: DataFrame to optimize
+        chunk_name: Name for logging
+        
+    Returns:
+        Optimized DataFrame
+    """
+    try:
+        original_memory = df.memory_usage(deep=True).sum() / 1024**2
+        
+        # Optimize data types
+        df = memory_usage_optimizer(df)
+        
+        # Remove unnecessary columns if they exist
+        unnecessary_cols = ['index', 'level_0', 'level_1']
+        for col in unnecessary_cols:
+            if col in df.columns:
+                df.drop(col, axis=1, inplace=True)
+        
+        optimized_memory = df.memory_usage(deep=True).sum() / 1024**2
+        memory_saved = original_memory - optimized_memory
+        
+        logger.info(f"{chunk_name} optimization: {memory_saved:.2f} MB saved "
+                   f"({original_memory:.2f} MB -> {optimized_memory:.2f} MB)")
+        
+        return df
+        
+    except Exception as e:
+        logger.error(f"Error optimizing {chunk_name}: {str(e)}")
+        return df
+
+def get_system_memory_info() -> Dict[str, Any]:
+    """
+    Get comprehensive system memory information
+    
+    Returns:
+        Dictionary with memory information
+    """
+    try:
+        # System memory
+        system_memory = psutil.virtual_memory()
+        
+        # Process memory
+        process = psutil.Process(os.getpid())
+        process_memory = process.memory_info()
+        
+        return {
+            'system': {
+                'total_mb': round(system_memory.total / 1024**2, 2),
+                'available_mb': round(system_memory.available / 1024**2, 2),
+                'used_mb': round(system_memory.used / 1024**2, 2),
+                'percent_used': round(system_memory.percent, 2)
+            },
+            'process': {
+                'rss_mb': round(process_memory.rss / 1024**2, 2),
+                'vms_mb': round(process_memory.vms / 1024**2, 2),
+                'percent': round(process.memory_percent(), 2)
+            },
+            'limits': {
+                'max_memory_mb': memory_config.max_memory_usage_mb,
+                'within_limits': check_memory_limit()
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting system memory info: {str(e)}")
+        return {}

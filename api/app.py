@@ -1,7 +1,18 @@
 """
-Improved Flask application for fraud detection API
-اپلیکیشن بهبود یافته Flask برای API تشخیص تقلب
+Memory-optimized Flask application for fraud detection API
+اپلیکیشن Flask بهینه‌سازی شده حافظه برای API تشخیص تقلب
 """
+
+import os
+import sys
+
+# Set environment variables for memory optimization if not already set
+os.environ.setdefault('CHUNK_SIZE', '5000')
+os.environ.setdefault('MAX_CACHE_SIZE', '5')
+os.environ.setdefault('ENABLE_STREAMING', 'True')
+os.environ.setdefault('ENABLE_ASYNC_INIT', 'True')
+os.environ.setdefault('MEMORY_CLEANUP_INTERVAL', '300')
+os.environ.setdefault('MAX_MEMORY_USAGE_MB', '2048')
 
 from flask import Flask, jsonify, render_template_string
 from flask_cors import CORS
@@ -11,10 +22,14 @@ import numpy as np
 import warnings
 from datetime import datetime
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
+import gc
+import psutil
+import threading
+import time
 
 # Import configuration and utilities
-from config import api_config, app_config, db_config
+from config import api_config, app_config, db_config, memory_config
 from exceptions import handle_exception, FraudDetectionError
 from database_config import get_db_manager
 from services.prediction_service import PredictionService
@@ -31,7 +46,11 @@ from utils import clean_numeric_column, memory_usage_optimizer
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('fraud_detection_optimized.log')
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -40,14 +59,97 @@ warnings.filterwarnings('ignore')
 pd.set_option('display.max_column', 50)
 pd.set_option('display.max_rows', 100)
 
-class FraudDetectionApp:
-    """Main application class for fraud detection API"""
+class LazyDataLoader:
+    """Lazy data loader that streams data from database"""
+    
+    def __init__(self, chunk_size: int = None):
+        self.chunk_size = chunk_size or memory_config.chunk_size
+        self.db_manager = get_db_manager()
+        self._data_cache = {}
+        self._cache_lock = threading.Lock()
+        
+    def get_data_chunk(self, chunk_id: int) -> Optional[pd.DataFrame]:
+        """Get a specific chunk of data"""
+        with self._cache_lock:
+            if chunk_id in self._data_cache:
+                return self._data_cache[chunk_id]
+            
+            # Load chunk from database
+            offset = chunk_id * self.chunk_size
+            query = f"SELECT * FROM Prescriptions LIMIT {self.chunk_size} OFFSET {offset}"
+            chunk = self.db_manager.load_data_from_db('Prescriptions', query)
+            
+            if chunk is not None and not chunk.empty:
+                # Process chunk
+                chunk = self._process_chunk(chunk)
+                self._data_cache[chunk_id] = chunk
+                
+                # Keep only last N chunks in cache
+                max_cache_size = memory_config.max_cache_size
+                if len(self._data_cache) > max_cache_size:
+                    oldest_chunk = min(self._data_cache.keys())
+                    del self._data_cache[oldest_chunk]
+                
+                return chunk
+            return None
+    
+    def _process_chunk(self, chunk: pd.DataFrame) -> pd.DataFrame:
+        """Process a single chunk of data"""
+        # Clean numeric columns
+        chunk['cost_amount'] = clean_numeric_column(chunk['cost_amount'], 'cost_amount')
+        chunk['ded_amount'] = clean_numeric_column(chunk['ded_amount'], 'ded_amount')
+        chunk['confirmed_amount'] = clean_numeric_column(chunk['confirmed_amount'], 'confirmed_amount')
+        
+        # Fill missing provider names
+        chunk['provider_name'] = chunk['provider_name'].fillna(chunk['Ref_code'])
+        chunk['provider_name'] = chunk['provider_name'].fillna(chunk['Ref_name'])
+        
+        # Add age column
+        chunk['age'] = chunk['jalali_date'].apply(calculate_age)
+        
+        # Convert dates
+        chunk['Adm_date'] = chunk['Adm_date'].apply(shamsi_to_miladi)
+        chunk['confirm_date'] = chunk['confirm_date'].apply(shamsi_to_miladi)
+        chunk['confirm_date'] = chunk['confirm_date'].fillna(chunk['Adm_date'].apply(add_one_month))
+        
+        # Reset confirmed amount
+        chunk['confirmed_amount'] = chunk['confirmed_amount'].fillna(0)
+        chunk['Adm_date'] = pd.to_datetime(chunk['Adm_date'])
+        chunk['year_month'] = chunk['Adm_date'].dt.to_period('M')
+        
+        # Ensure consistent data types
+        chunk['ID'] = chunk['ID'].astype(str)
+        chunk['provider_name'] = chunk['provider_name'].astype(str)
+        chunk['Service'] = chunk['Service'].astype(str)
+        chunk['provider_specialty'] = chunk['provider_specialty'].astype(str)
+        chunk['year_month'] = chunk['year_month'].astype(str)
+        
+        return chunk
+    
+    def get_total_chunks(self) -> int:
+        """Get total number of chunks"""
+        total_count = self.db_manager.get_table_count('Prescriptions')
+        if total_count is None:
+            return 0
+        return (total_count + self.chunk_size - 1) // self.chunk_size
+    
+    def clear_cache(self):
+        """Clear the data cache"""
+        with self._cache_lock:
+            self._data_cache.clear()
+            gc.collect()
+
+class MemoryOptimizedFraudDetectionApp:
+    """Memory-optimized main application class for fraud detection API"""
     
     def __init__(self):
         self.app = Flask(__name__)
         self.prediction_service = None
         self.chart_service = None
-        self.data = None
+        self.data_loader = LazyDataLoader()
+        self._services_initialized = False
+        self._initialization_lock = threading.Lock()
+        self._initialization_thread = None
         
         self._configure_app()
         self._register_blueprints()
@@ -106,118 +208,136 @@ class FraudDetectionApp:
         self.app.register_error_handler(FraudDetectionError, handle_exception)
         self.app.register_error_handler(Exception, handle_exception)
     
-    def load_and_prepare_data(self) -> bool:
-        """
-        Load and prepare the dataset from MariaDB
-        
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            logger.info("Connecting to database...")
-            db_manager = get_db_manager()
-            
-            # Test database connection
-            if not db_manager.test_connection():
-                raise Exception("Failed to connect to database")
-            
-            logger.info("Loading main dataset from database...")
-            # Load main dataset from database table
-            self.data = db_manager.load_data_from_db('Prescriptions')
-            
-            if self.data is None or self.data.empty:
-                raise Exception("No data found in database table 'Prescriptions'")
-            
-            logger.info(f"Loaded {len(self.data)} records from database")
-            
-            # Clean numeric columns
-            self.data['cost_amount'] = clean_numeric_column(self.data['cost_amount'], 'cost_amount')
-            self.data['ded_amount'] = clean_numeric_column(self.data['ded_amount'], 'ded_amount')
-            self.data['confirmed_amount'] = clean_numeric_column(self.data['confirmed_amount'], 'confirmed_amount')
-        
-            # Fill missing provider names
-            self.data['provider_name'] = self.data['provider_name'].fillna(self.data['Ref_code'])
-            self.data['provider_name'] = self.data['provider_name'].fillna(self.data['Ref_name'])
-            
-            # Load specialties from database
-            logger.info("Loading specialties from database...")
-            specialties = db_manager.load_data_from_db('Specialties')
-            
-            if specialties is not None and not specialties.empty:
-                merged_data = self.data.merge(specialties, on='Service', how='left')
-                self.data['provider_specialty'] = self.data['provider_specialty'].combine_first(merged_data['specialty'])
-            else:
-                logger.warning("No specialties data found in database, using existing provider_specialty column")
-            
-            # Add age column
-            self.data['age'] = self.data['jalali_date'].apply(calculate_age)
-            
-            # Convert dates
-            self.data['Adm_date'] = self.data['Adm_date'].apply(shamsi_to_miladi)
-            self.data['confirm_date'] = self.data['confirm_date'].apply(shamsi_to_miladi)
-            self.data['confirm_date'] = self.data['confirm_date'].fillna(self.data['Adm_date'].apply(add_one_month))
-            
-            # Reset confirmed amount
-            self.data['confirmed_amount'] = self.data['confirmed_amount'].fillna(0)
-            self.data['record_id'] = range(1, len(self.data) + 1)
-            self.data['Adm_date'] = pd.to_datetime(self.data['Adm_date'])
-            self.data['year_month'] = self.data['Adm_date'].dt.to_period('M')
-            
-            # Ensure consistent data types for key columns
-            self.data['ID'] = self.data['ID'].astype(str)
-            self.data['provider_name'] = self.data['provider_name'].astype(str)
-            self.data['Service'] = self.data['Service'].astype(str)
-            self.data['provider_specialty'] = self.data['provider_specialty'].astype(str)
-            self.data['year_month'] = self.data['year_month'].astype(str)
-            
-            # Optimize memory usage
-            self.data = memory_usage_optimizer(self.data)
-            
-            logger.info("Data preparation completed successfully")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error loading and preparing data: {str(e)}")
-            return False
+    def _log_memory_usage(self, stage: str):
+        """Log current memory usage"""
+        process = psutil.Process(os.getpid())
+        memory_mb = process.memory_info().rss / 1024 / 1024
+        logger.info(f"Memory usage at {stage}: {memory_mb:.2f} MB")
     
-    def initialize_services(self) -> bool:
-        """
-        Initialize prediction and chart services
-        
-        Returns:
-            True if successful, False otherwise
-        """
+    def _initialize_services_async(self):
+        """Initialize services asynchronously to avoid blocking startup"""
         try:
-            if self.data is None:
-                raise Exception("Data not loaded")
+            logger.info("Starting asynchronous service initialization...")
+            self._log_memory_usage("before_async_init")
             
-            logger.info("Initializing prediction service...")
+            # Initialize prediction service with streaming data
             self.prediction_service = PredictionService()
-            self.prediction_service.train_model(self.data)
             
-            # Verify prediction service is ready
-            if not self.prediction_service.is_ready():
-                raise Exception("Prediction service failed to initialize properly")
+            # Train model with streaming data
+            self._train_model_with_streaming()
             
-            if self.prediction_service.data_final is None:
-                raise Exception("Prediction service data_final is None")
+            # Initialize chart service
+            if self.prediction_service.is_ready():
+                self.chart_service = ChartService(self.prediction_service.data_final)
+                
+                # Initialize route services
+                init_prediction_service(self.prediction_service)
+                init_chart_services(self.chart_service, self.prediction_service)
+                
+                self._services_initialized = True
+                logger.info("Asynchronous service initialization completed successfully")
+            else:
+                logger.error("Prediction service failed to initialize properly")
             
-            logger.info("Initializing chart service...")
-            self.chart_service = ChartService(self.prediction_service.data_final)
-            
-            # Initialize route services
-            init_prediction_service(self.prediction_service)
-            init_chart_services(self.chart_service, self.prediction_service)
-            
-            logger.info("Services initialized successfully")
-            return True
+            self._log_memory_usage("after_async_init")
             
         except Exception as e:
-            logger.error(f"Error initializing services: {str(e)}")
-            # Reset services to None on failure
+            logger.error(f"Error in asynchronous service initialization: {str(e)}")
             self.prediction_service = None
             self.chart_service = None
-            return False
+    
+    def _train_model_with_streaming(self):
+        """Train model using streaming data to reduce memory usage"""
+        try:
+            logger.info("Training model with streaming data...")
+            
+            # Get total chunks
+            total_chunks = self.data_loader.get_total_chunks()
+            logger.info(f"Total chunks to process: {total_chunks}")
+            
+            # Process chunks and collect features
+            all_features = []
+            all_metadata = []
+            
+            for chunk_id in range(total_chunks):
+                chunk = self.data_loader.get_data_chunk(chunk_id)
+                if chunk is not None and not chunk.empty:
+                    # Extract features from chunk
+                    features = self._extract_features_from_chunk(chunk)
+                    if features is not None:
+                        all_features.append(features)
+                        all_metadata.append(chunk[['Adm_date', 'gender', 'age', 'Service', 'province',
+                                                 'Ins_Cover', 'Invice-type', 'Type_Medical_Record',
+                                                 'provider_name', 'ID']].copy())
+                    
+                    # Clear chunk from cache to save memory
+                    self.data_loader.clear_cache()
+                    
+                    # Log progress
+                    if (chunk_id + 1) % 10 == 0:
+                        logger.info(f"Processed {chunk_id + 1}/{total_chunks} chunks")
+                        self._log_memory_usage(f"chunk_{chunk_id + 1}")
+            
+            # Combine all features
+            if all_features:
+                combined_features = pd.concat(all_features, ignore_index=True)
+                combined_metadata = pd.concat(all_metadata, ignore_index=True)
+                
+                # Train model
+                self.prediction_service.train_model_streaming(combined_features, combined_metadata)
+                
+                # Clean up
+                del all_features, all_metadata, combined_features, combined_metadata
+                gc.collect()
+                
+                logger.info("Model training with streaming data completed")
+            else:
+                raise Exception("No features extracted from data")
+                
+        except Exception as e:
+            logger.error(f"Error training model with streaming data: {str(e)}")
+            raise
+    
+    def _extract_features_from_chunk(self, chunk: pd.DataFrame) -> Optional[pd.DataFrame]:
+        """Extract features from a single chunk"""
+        try:
+            from services.feature_extractor import FeatureExtractor
+            
+            # Create feature extractor for this chunk
+            feature_extractor = FeatureExtractor(chunk)
+            
+            # Extract features
+            chunk_with_features = feature_extractor.extract_all_features()
+            
+            # Return only feature columns
+            feature_columns = [
+                'unq_ratio_provider', 'unq_ratio_patient', 'percent_change_provider',
+                'percent_change_patient', 'percent_difference', 'percent_diff_ser',
+                'percent_diff_spe', 'percent_diff_spe2', 'percent_diff_ser_patient',
+                'percent_diff_serv', 'Ratio'
+            ]
+            
+            available_features = [col for col in feature_columns if col in chunk_with_features.columns]
+            if available_features:
+                return chunk_with_features[available_features].copy()
+            else:
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error extracting features from chunk: {str(e)}")
+            return None
+    
+    def start_async_initialization(self):
+        """Start asynchronous service initialization"""
+        if self._initialization_thread is None or not self._initialization_thread.is_alive():
+            self._initialization_thread = threading.Thread(target=self._initialize_services_async)
+            self._initialization_thread.daemon = True
+            self._initialization_thread.start()
+            logger.info("Started asynchronous service initialization")
+    
+    def is_ready(self) -> bool:
+        """Check if the application is ready to serve requests"""
+        return self._services_initialized and self.prediction_service is not None and self.prediction_service.is_ready()
     
     def create_home_page(self) -> str:
         """Create home page HTML"""
@@ -242,18 +362,31 @@ class FraudDetectionApp:
                 .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
                 .status.ready { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
                 .status.not-ready { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+                .status.loading { background: #cce5ff; border: 1px solid #b3d9ff; color: #004085; }
+                .config { background: #e8f4fd; padding: 15px; border-radius: 5px; margin: 15px 0; }
             </style>
         </head>
         <body>
             <div class="container">
-                <h1>🔍 API تشخیص تقلب پزشکی</h1>
+                <h1>🔍 API تشخیص تقلب پزشکی (بهینه‌سازی شده)</h1>
                 
-                <div class="status """ + ("ready" if self.prediction_service and self.prediction_service.is_ready() else "not-ready") + """">
-                    <strong>وضعیت سیستم:</strong> """ + ("آماده" if self.prediction_service and self.prediction_service.is_ready() else "در حال بارگذاری") + """
+                <div class="status """ + ("ready" if self.is_ready() else "loading" if self._initialization_thread and self._initialization_thread.is_alive() else "not-ready") + """">
+                    <strong>وضعیت سیستم:</strong> """ + ("آماده" if self.is_ready() else "در حال بارگذاری" if self._initialization_thread and self._initialization_thread.is_alive() else "در انتظار") + """
                 </div>
                 
                 <div class="warning">
-                    <strong>⚠️ توجه:</strong> این API برای تشخیص تقلب در نسخه‌های پزشکی طراحی شده است.
+                    <strong>⚠️ توجه:</strong> این API برای تشخیص تقلب در نسخه‌های پزشکی طراحی شده است. <strong>نسخه بهینه‌سازی شده حافظه</strong>
+                </div>
+                
+                <div class="config">
+                    <strong>⚙️ تنظیمات بهینه‌سازی:</strong>
+                    <ul>
+                        <li>اندازه قطعه داده: """ + str(memory_config.chunk_size) + """ رکورد</li>
+                        <li>حداکثر کش: """ + str(memory_config.max_cache_size) + """ قطعه</li>
+                        <li>حداکثر حافظه: """ + str(memory_config.max_memory_usage_mb) + """ مگابایت</li>
+                        <li>پردازش جریانی: """ + ("فعال" if memory_config.enable_streaming else "غیرفعال") + """</li>
+                        <li>راه‌اندازی غیرهمزمان: """ + ("فعال" if memory_config.enable_async_init else "غیرفعال") + """</li>
+                    </ul>
                 </div>
                 
                 <h2>📋 نقاط پایانی (Endpoints)</h2>
@@ -279,6 +412,20 @@ class FraudDetectionApp:
                     <p>آمار کلی از داده‌های موجود و نتایج تشخیص تقلب.</p>
                 </div>
                 
+                <div class="endpoint">
+                    <span class="method">GET</span>
+                    <span class="url">/memory</span>
+                    <p><strong>وضعیت حافظه</strong></p>
+                    <p>مشاهده مصرف حافظه فعلی سیستم.</p>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method">GET</span>
+                    <span class="url">/cache/clear</span>
+                    <p><strong>پاکسازی کش</strong></p>
+                    <p>پاکسازی کش داده‌ها برای آزادسازی حافظه.</p>
+                </div>
+                
                 <h2>🔧 نحوه استفاده</h2>
                 <div class="example">
                     <h4>مثال با cURL:</h4>
@@ -295,7 +442,7 @@ class FraudDetectionApp:
      }'</pre>
                 </div>
                 
-                <h2>📊 ویژگی‌های سیستم</h2>
+                <h2>📊 ویژگی‌های سیستم (بهینه‌سازی شده)</h2>
                 <ul>
                     <li>تشخیص تقلب با الگوریتم Isolation Forest</li>
                     <li>محاسبه ۱۱ شاخص ریسک مختلف</li>
@@ -305,6 +452,11 @@ class FraudDetectionApp:
                     <li>تحلیل بر اساس استان، جنسیت و گروه سنی</li>
                     <li>اعتبارسنجی ورودی و مدیریت خطا</li>
                     <li>مستندات تعاملی Swagger</li>
+                    <li><strong>بهینه‌سازی حافظه با بارگذاری تدریجی داده‌ها</strong></li>
+                    <li><strong>پردازش داده‌ها به صورت جریانی (Streaming)</strong></li>
+                    <li><strong>کش هوشمند برای کاهش بارگذاری مجدد</strong></li>
+                    <li><strong>مدیریت خودکار حافظه و پاکسازی</strong></li>
+                    <li><strong>راه‌اندازی غیرهمزمان برای شروع سریع</strong></li>
                 </ul>
                 
                 <h2>📚 مستندات</h2>
@@ -328,24 +480,55 @@ class FraudDetectionApp:
             return jsonify({
                 'status': 'healthy',
                 'model_loaded': self.prediction_service is not None and self.prediction_service.is_ready(),
-                'data_loaded': self.data is not None,
+                'services_initialized': self._services_initialized,
+                'initialization_running': self._initialization_thread is not None and self._initialization_thread.is_alive(),
                 'timestamp': datetime.now().isoformat()
             })
         
         @self.app.route('/ready')
         def readiness_check():
             """Readiness check endpoint"""
-            is_ready = (self.prediction_service is not None and 
-                       self.prediction_service.is_ready() and 
-                       self.data is not None)
+            is_ready = self.is_ready()
             
             return jsonify({
                 'ready': is_ready,
                 'services': {
                     'prediction_service': self.prediction_service is not None,
                     'chart_service': self.chart_service is not None,
-                    'data_loaded': self.data is not None
+                    'services_initialized': self._services_initialized,
+                    'initialization_running': self._initialization_thread is not None and self._initialization_thread.is_alive()
                 },
+                'timestamp': datetime.now().isoformat()
+            })
+        
+        @self.app.route('/memory')
+        def memory_status():
+            """Memory usage status endpoint"""
+            process = psutil.Process(os.getpid())
+            memory_mb = process.memory_info().rss / 1024 / 1024
+            
+            return jsonify({
+                'memory_usage_mb': round(memory_mb, 2),
+                'services_initialized': self._services_initialized,
+                'initialization_running': self._initialization_thread is not None and self._initialization_thread.is_alive(),
+                'cache_size': len(self.data_loader._data_cache),
+                'memory_config': {
+                    'chunk_size': memory_config.chunk_size,
+                    'max_cache_size': memory_config.max_cache_size,
+                    'max_memory_usage_mb': memory_config.max_memory_usage_mb,
+                    'enable_streaming': memory_config.enable_streaming,
+                    'enable_async_init': memory_config.enable_async_init
+                },
+                'timestamp': datetime.now().isoformat()
+            })
+        
+        @self.app.route('/cache/clear')
+        def clear_cache():
+            """Clear data cache endpoint"""
+            self.data_loader.clear_cache()
+            return jsonify({
+                'status': 'success',
+                'message': 'Cache cleared successfully',
                 'timestamp': datetime.now().isoformat()
             })
     
@@ -363,38 +546,42 @@ class FraudDetectionApp:
         port = port or app_config.port
         debug = debug if debug is not None else app_config.debug
         
-        logger.info(f"Starting Flask server on {host}:{port}")
+        # Start asynchronous initialization
+        self.start_async_initialization()
+        
+        logger.info(f"Starting memory-optimized Flask server on {host}:{port}")
+        logger.info("The application will start immediately and initialize services asynchronously")
+        logger.info("Check /ready endpoint to monitor initialization progress")
+        logger.info("Check /memory endpoint to monitor memory usage")
+        
         self.app.run(host=host, port=port, debug=debug)
 
-def create_app() -> FraudDetectionApp:
-    """Create and configure the Flask application"""
-    app = FraudDetectionApp()
-    
-    # Load and prepare data
-    if not app.load_and_prepare_data():
-        logger.error("Failed to load and prepare data")
-        logger.warning("Application will start but services may not be available")
-        app.setup_routes()
-        return app
-    
-    # Initialize services
-    if not app.initialize_services():
-        logger.error("Failed to initialize services")
-        logger.warning("Application will start but prediction and chart services may not be available")
-        app.setup_routes()
-        return app
+def create_app() -> MemoryOptimizedFraudDetectionApp:
+    """Create and configure the memory-optimized Flask application"""
+    app = MemoryOptimizedFraudDetectionApp()
     
     # Setup routes
     app.setup_routes()
     
-    logger.info("Application created successfully")
+    logger.info("Memory-optimized application created successfully")
     return app
 
 if __name__ == '__main__':
-    print("Creating and configuring application...")
+    print("=" * 60)
+    print("Starting Memory-Optimized Fraud Detection API")
+    print("=" * 60)
+    print(f"Start time: {datetime.now().isoformat()}")
+    print()
+    
+    print("Creating and configuring memory-optimized application...")
     fraud_app = create_app()
     
-    print("Starting Flask server...")
+    print("Starting Flask server with memory optimization...")
+    print("The application will start immediately and initialize services asynchronously")
+    print("Check /ready endpoint to monitor initialization progress")
+    print("Check /memory endpoint to monitor memory usage")
+    print()
+    
     fraud_app.run()
 
 application_instance = create_app()

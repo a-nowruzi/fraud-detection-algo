@@ -10,7 +10,7 @@ from dataclasses import dataclass
 @dataclass
 class DatabaseConfig:
     """Database configuration settings"""
-    host: str = os.getenv('DB_HOST', 'localhost')
+    host: str = os.getenv('DB_HOST', '91.107.174.199')
     database: str = os.getenv('DB_NAME', 'testdb')
     user: str = os.getenv('DB_USER', 'admin')
     password: str = os.getenv('DB_PASSWORD', 'Alireza')
@@ -26,6 +26,16 @@ class ModelConfig:
     max_features: int = 4
     contamination: float = 0.2
     random_state: int = 42
+
+@dataclass
+class MemoryConfig:
+    """Memory optimization configuration"""
+    chunk_size: int = int(os.getenv('CHUNK_SIZE', '5000'))
+    max_cache_size: int = int(os.getenv('MAX_CACHE_SIZE', '5'))
+    enable_streaming: bool = os.getenv('ENABLE_STREAMING', 'True').lower() == 'true'
+    enable_async_init: bool = os.getenv('ENABLE_ASYNC_INIT', 'True').lower() == 'true'
+    memory_cleanup_interval: int = int(os.getenv('MEMORY_CLEANUP_INTERVAL', '300'))  # seconds
+    max_memory_usage_mb: int = int(os.getenv('MAX_MEMORY_USAGE_MB', '2048'))  # 2GB default
 
 @dataclass
 class AppConfig:
@@ -66,6 +76,7 @@ class APIConfig:
 # Global configuration instances
 db_config = DatabaseConfig()
 model_config = ModelConfig()
+memory_config = MemoryConfig()
 app_config = AppConfig()
 api_config = APIConfig()
 
@@ -74,6 +85,7 @@ def get_config() -> Dict[str, Any]:
     return {
         'database': db_config,
         'model': model_config,
+        'memory': memory_config,
         'app': app_config,
         'api': api_config
     }
