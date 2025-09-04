@@ -26,6 +26,11 @@ class ModelConfig:
     max_features: int = 4
     contamination: float = 0.2
     random_state: int = 42
+    
+    # Model persistence configuration
+    enable_persistence: bool = os.getenv('ENABLE_MODEL_PERSISTENCE', 'True').lower() == 'true'
+    max_age_days: int = int(os.getenv('MODEL_MAX_AGE_DAYS', '30'))
+    auto_save: bool = os.getenv('AUTO_SAVE_MODEL', 'True').lower() == 'true'
 
 @dataclass
 class MemoryConfig:

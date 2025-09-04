@@ -5,18 +5,21 @@ Memory-optimized prediction service for fraud detection API
 
 import pandas as pd
 import numpy as np
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import IsolationForest
 from scipy.stats import norm
-from config import model_config
-from exceptions import ModelNotReadyError
-from services.feature_extractor import FeatureExtractor
-from age_calculate_function import calculate_age
-from shamsi_to_miladi_function import shamsi_to_miladi
-from add_one_month_function import add_one_month
+from config.config import model_config
+from core.exceptions import ModelNotReadyError
+from .feature_extractor import FeatureExtractor
+from functions.age_calculate_function import calculate_age
+from functions.shamsi_to_miladi_function import shamsi_to_miladi
+from functions.add_one_month_function import add_one_month
 import logging
 import gc
+import os
+import pickle
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +37,133 @@ class MemoryOptimizedPredictionService:
             'percent_diff_spe', 'percent_diff_spe2', 'percent_diff_ser_patient',
             'percent_diff_serv', 'Ratio'
         ]
+        
+        # Model persistence paths
+        self.models_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models')
+        self.model_path = os.path.join(self.models_dir, 'fraud_detection_model.pkl')
+        self.scaler_path = os.path.join(self.models_dir, 'fraud_detection_scaler.pkl')
+        self.metadata_path = os.path.join(self.models_dir, 'model_metadata.pkl')
+        
+        # Ensure models directory exists
+        os.makedirs(self.models_dir, exist_ok=True)
+        
+        # Try to load existing model first if persistence is enabled
+        if model_config.enable_persistence:
+            self._try_load_existing_model()
+    
+    def _try_load_existing_model(self) -> bool:
+        """Try to load existing trained model and scaler"""
+        try:
+            if (os.path.exists(self.model_path) and 
+                os.path.exists(self.scaler_path) and 
+                os.path.exists(self.metadata_path)):
+                
+                logger.info("Found existing model files, attempting to load...")
+                
+                # Load model
+                with open(self.model_path, 'rb') as f:
+                    self.clf = pickle.load(f)
+                
+                # Load scaler
+                with open(self.scaler_path, 'rb') as f:
+                    self.scaler = pickle.load(f)
+                
+                # Load metadata
+                with open(self.metadata_path, 'rb') as f:
+                    metadata = pickle.load(f)
+                
+                # Check if model is still valid (not too old)
+                if self._is_model_fresh(metadata):
+                    logger.info("Successfully loaded existing model")
+                    return True
+                else:
+                    logger.info("Existing model is outdated, will retrain")
+                    return False
+            else:
+                logger.info("No existing model files found")
+                return False
+                
+        except Exception as e:
+            logger.warning(f"Failed to load existing model: {str(e)}")
+            return False
+    
+    def _is_model_fresh(self, metadata: Dict[str, Any]) -> bool:
+        """Check if the model is still fresh (not too old)"""
+        try:
+            if 'last_trained' not in metadata:
+                return False
+            
+            last_trained = metadata['last_trained']
+            if isinstance(last_trained, str):
+                last_trained = datetime.fromisoformat(last_trained)
+            
+            # Model is considered fresh if trained within configured days
+            max_age_days = model_config.max_age_days
+            age_threshold = datetime.now() - timedelta(days=max_age_days)
+            
+            is_fresh = last_trained > age_threshold
+            logger.info(f"Model age: {datetime.now() - last_trained}, fresh: {is_fresh}")
+            
+            return is_fresh
+            
+        except Exception as e:
+            logger.warning(f"Error checking model freshness: {str(e)}")
+            return False
+    
+    def _save_model(self) -> None:
+        """Save trained model, scaler, and metadata"""
+        try:
+            if self.clf is not None and self.scaler is not None:
+                logger.info("Saving trained model...")
+                
+                # Save model
+                with open(self.model_path, 'wb') as f:
+                    pickle.dump(self.clf, f)
+                
+                # Save scaler
+                with open(self.scaler_path, 'wb') as f:
+                    pickle.dump(self.scaler, f)
+                
+                # Save metadata
+                metadata = {
+                    'last_trained': datetime.now().isoformat(),
+                    'model_type': 'IsolationForest',
+                    'n_estimators': model_config.n_estimators,
+                    'max_samples': model_config.max_samples,
+                    'max_features': model_config.max_features,
+                    'contamination': model_config.contamination,
+                    'training_samples': len(self.data_final) if self.data_final is not None else 0,
+                    'feature_count': len(self._feature_columns)
+                }
+                
+                with open(self.metadata_path, 'wb') as f:
+                    pickle.dump(metadata, f)
+                
+                logger.info("Model saved successfully")
+                
+        except Exception as e:
+            logger.error(f"Error saving model: {str(e)}")
+    
+    def force_retrain(self) -> None:
+        """Force model retraining by clearing existing model"""
+        try:
+            logger.info("Forcing model retraining...")
+            
+            # Clear existing model
+            self.clf = None
+            self.scaler = None
+            self.data_final = None
+            
+            # Remove existing model files
+            for file_path in [self.model_path, self.scaler_path, self.metadata_path]:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    logger.info(f"Removed {file_path}")
+            
+            logger.info("Model cleared, will retrain on next training call")
+            
+        except Exception as e:
+            logger.error(f"Error forcing retrain: {str(e)}")
     
     def is_ready(self) -> bool:
         """Check if the model is ready for predictions"""
@@ -88,6 +218,10 @@ class MemoryOptimizedPredictionService:
             # Clean up intermediate data
             gc.collect()
             
+            # Save the trained model if persistence is enabled
+            if model_config.auto_save:
+                self._save_model()
+            
             logger.info("Memory-optimized model training completed successfully")
             
         except Exception as e:
@@ -132,6 +266,10 @@ class MemoryOptimizedPredictionService:
             
             # Clean up intermediate data
             gc.collect()
+            
+            # Save the trained model if persistence is enabled
+            if model_config.auto_save:
+                self._save_model()
             
             logger.info("Streaming model training completed successfully")
             
@@ -209,17 +347,17 @@ class MemoryOptimizedPredictionService:
         """Calculate all features for the new sample with memory optimization"""
         try:
             # Import feature calculation functions
-            from ftr_1_function import unique_providers_nf
-            from ftr_2_function import unique_patients_nf
-            from ftr_3_3_function import percent_change_provider_nf
-            from ftr_4_function import percent_change_patient_nf
-            from ftr_5_function import percent_difference_nf
-            from ftr_6_function import percent_diff_ser_nf
-            from ftr_7_function import percent_diff_spe_nf
-            from ftr_7_2_function import percent_diff_spe2_nf
-            from ftr_8_1_function import percent_diff_ser_patient_nf
-            from ftr_8_2_function import percent_diff_serv_nf
-            from ftr_9_function import ratio_nf
+            from functions.ftr_1_function import unique_providers_nf
+            from functions.ftr_2_function import unique_patients_nf
+            from functions.ftr_3_3_function import percent_change_provider_nf
+            from functions.ftr_4_function import percent_change_patient_nf
+            from functions.ftr_5_function import percent_difference_nf
+            from functions.ftr_6_function import percent_diff_ser_nf
+            from functions.ftr_7_function import percent_diff_spe_nf
+            from functions.ftr_7_2_function import percent_diff_spe2_nf
+            from functions.ftr_8_1_function import percent_diff_ser_patient_nf
+            from functions.ftr_8_2_function import percent_diff_serv_nf
+            from functions.ftr_9_function import ratio_nf
             
             feature_functions = [
                 (unique_providers_nf, 'unq_ratio_provider'),

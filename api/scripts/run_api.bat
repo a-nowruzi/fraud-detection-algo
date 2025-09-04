@@ -18,8 +18,8 @@ if errorlevel 1 (
 )
 
 REM Check for required files
-if not exist "app.py" (
-    echo ❌ Error: app.py file not found!
+if not exist "main.py" (
+    echo ❌ Error: main.py file not found!
     echo Please ensure the improved application is properly set up.
     pause
     exit /b 1
@@ -40,8 +40,8 @@ if not exist "routes" (
     exit /b 1
 )
 
-if not exist "config.py" (
-    echo ❌ Error: config.py file not found!
+if not exist "config\config.py" (
+    echo ❌ Error: config\config.py file not found!
     echo Please ensure all modular components are present.
     pause
     exit /b 1
@@ -73,7 +73,7 @@ echo ✅ Dependencies installed successfully.
 
 REM Check database connection
 echo 🔍 Checking database connection...
-python -c "from database_config import get_db_manager; db = get_db_manager(); print('✅ Database connection successful' if db.test_connection() else '❌ Database connection failed')"
+python -c "from core.database_config import get_db_manager; db = get_db_manager(); print('✅ Database connection successful' if db.test_connection() else '❌ Database connection failed')"
 if errorlevel 1 (
     echo ❌ Error: Database connection failed!
     echo Please check your database configuration in database_config.py
@@ -85,7 +85,7 @@ echo.
 
 REM Check application structure
 echo 🔍 Validating application structure...
-python -c "import sys; sys.path.append('.'); from app import create_app; print('✅ Application structure is valid')"
+python -c "import sys; sys.path.append('.'); from main import create_app; print('✅ Application structure is valid')"
 if errorlevel 1 (
     echo ❌ Error: Application structure validation failed!
     echo Please check that all modules are properly configured.
@@ -114,7 +114,7 @@ echo ⏹️ To stop the API, press Ctrl+C.
 echo.
 
 REM Run the improved API
-python app.py
+python main.py
 
 echo.
 echo API stopped.

@@ -6,7 +6,7 @@ Input validation and sanitization for the fraud detection API
 import re
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-from exceptions import ValidationError
+from .exceptions import ValidationError
 
 def validate_prescription_data(data: Dict[str, Any]) -> Dict[str, Any]:
     """

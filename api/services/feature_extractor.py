@@ -6,8 +6,8 @@ Memory-optimized feature extraction service for fraud detection
 import pandas as pd
 import numpy as np
 from typing import Dict, Any, List
-from utils import safe_division, calculate_percentage_change, performance_monitor
-from config import app_config
+from core.utils import safe_division, calculate_percentage_change, performance_monitor
+from config.config import app_config
 import logging
 import gc
 

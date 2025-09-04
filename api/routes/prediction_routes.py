@@ -6,9 +6,10 @@ Prediction routes for fraud detection API
 from flask import Blueprint, request, jsonify
 from flasgger import swag_from
 from services.prediction_service import PredictionService
-from validators import validate_prescription_data, sanitize_input
-from exceptions import ValidationError, ModelNotReadyError
+from core.validators import validate_prescription_data, sanitize_input
+from core.exceptions import ValidationError, ModelNotReadyError
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -261,5 +262,54 @@ def get_model_info():
         logger.error(f"Error getting model info: {str(e)}")
         return jsonify({
             'error': 'Internal server error while getting model info',
+            'details': str(e)
+        }), 500
+
+@prediction_bp.route('/retrain', methods=['POST'])
+@swag_from({
+    'tags': ['System'],
+    'produces': ['application/json'],
+    'responses': {
+        200: {
+            'description': 'Model retraining initiated successfully',
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'status': {
+                        'type': 'string'
+                    },
+                    'message': {
+                        'type': 'string'
+                    },
+                    'timestamp': {
+                        'type': 'string'
+                    }
+                }
+            }
+        },
+        500: {
+            'description': 'Internal server error'
+        }
+    }
+})
+def retrain_model():
+    """Force model retraining"""
+    try:
+        if prediction_service is None:
+            return jsonify({'error': 'Prediction service not initialized'}), 503
+        
+        # Force retrain
+        prediction_service.force_retrain()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Model retraining initiated. The model will be retrained on the next request.',
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error initiating model retrain: {str(e)}")
+        return jsonify({
+            'error': 'Internal server error while initiating retrain',
             'details': str(e)
         }), 500

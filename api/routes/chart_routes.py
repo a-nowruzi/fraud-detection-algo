@@ -7,8 +7,8 @@ from flask import Blueprint, request, jsonify
 from flasgger import swag_from
 from services.chart_service import ChartService
 from services.prediction_service import PredictionService
-from validators import validate_chart_parameters, validate_prescription_data, sanitize_input
-from exceptions import ValidationError, ChartGenerationError, ModelNotReadyError
+from core.validators import validate_chart_parameters, validate_prescription_data, sanitize_input
+from core.exceptions import ValidationError, ChartGenerationError, ModelNotReadyError
 import logging
 
 logger = logging.getLogger(__name__)

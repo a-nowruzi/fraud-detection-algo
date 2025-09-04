@@ -12,8 +12,8 @@ import io
 import base64
 from typing import Dict, Any, List, Optional
 from scipy.stats import zscore, norm
-from config import app_config
-from exceptions import ChartGenerationError
+from config.config import app_config
+from core.exceptions import ChartGenerationError
 import logging
 
 logger = logging.getLogger(__name__)

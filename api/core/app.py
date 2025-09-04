@@ -1,8 +1,3 @@
-"""
-Memory-optimized Flask application for fraud detection API (Gunicorn Compatible)
-اپلیکیشن Flask بهینه‌سازی شده حافظه برای API تشخیص تقلب (سازگار با Gunicorn)
-"""
-
 import os
 import sys
 
@@ -31,19 +26,23 @@ import threading
 import time
 
 # Import configuration and utilities
-from config import api_config, app_config, db_config, memory_config
-from exceptions import handle_exception, FraudDetectionError
-from database_config import get_db_manager
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config.config import api_config, app_config, db_config, memory_config
+from core.exceptions import handle_exception, FraudDetectionError
+from core.database_config import get_db_manager
 from services.prediction_service import PredictionService
 from services.chart_service import ChartService
 from routes.prediction_routes import prediction_bp, init_prediction_service
 from routes.chart_routes import chart_bp, init_chart_services
 
 # Import custom functions
-from age_calculate_function import calculate_age
-from shamsi_to_miladi_function import shamsi_to_miladi
-from add_one_month_function import add_one_month
-from utils import clean_numeric_column, memory_usage_optimizer
+from functions.age_calculate_function import calculate_age
+from functions.shamsi_to_miladi_function import shamsi_to_miladi
+from functions.add_one_month_function import add_one_month
+from core.utils import clean_numeric_column, memory_usage_optimizer
 
 # Configure logging
 logging.basicConfig(
@@ -51,7 +50,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler('fraud_detection_optimized.log')
+        logging.FileHandler('logs/fraud_detection_optimized.log')
     ]
 )
 logger = logging.getLogger(__name__)
@@ -241,9 +240,13 @@ class MemoryOptimizedFraudDetectionApp:
             logger.info("Initializing prediction service...")
             self.prediction_service = PredictionService()
             
-            # Train model with streaming data
-            logger.info("Starting model training...")
-            self._train_model_with_streaming()
+            # Check if model is already loaded
+            if self.prediction_service.is_ready():
+                logger.info("Model already loaded from disk, skipping training")
+            else:
+                # Train model with streaming data
+                logger.info("Starting model training...")
+                self._train_model_with_streaming()
             
             # Initialize chart service
             if self.prediction_service.is_ready():
