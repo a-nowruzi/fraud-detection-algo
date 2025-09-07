@@ -9,6 +9,7 @@ from services.chart_service import ChartService
 from services.prediction_service import PredictionService
 from core.validators import validate_chart_parameters, validate_prescription_data, sanitize_input
 from core.exceptions import ValidationError, ChartGenerationError, ModelNotReadyError
+from config.config import app_config
 import logging
 
 logger = logging.getLogger(__name__)
@@ -219,7 +220,11 @@ def risk_indicators_chart():
     
     except Exception as e:
         logger.error(f"Error creating risk indicators chart: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'error': 'Failed to generate risk indicators chart',
+            'message': 'An error occurred while generating the chart. Please try again.',
+            'details': str(e) if app_config.debug else 'Internal server error'
+        }), 500
 
 @chart_bp.route('/fraud-ratio-by-age-group', methods=['GET'])
 @swag_from({

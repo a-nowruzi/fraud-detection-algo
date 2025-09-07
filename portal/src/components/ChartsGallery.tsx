@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { apiService } from '../services/api';
-import { BarChart3, TrendingUp, MapPin, Users, Calendar, CreditCard, FileText, Activity, AlertTriangle } from 'lucide-react';
+import { BarChart3, MapPin, Users, Calendar, CreditCard, FileText } from 'lucide-react';
 
 const ChartsGallery: React.FC = () => {
   const [selectedChart, setSelectedChart] = useState<string | null>(null);
@@ -61,13 +61,6 @@ const ChartsGallery: React.FC = () => {
       category: 'زمانی',
     },
     {
-      id: 'fraud-ratio-by-date',
-      title: 'نسبت تقلب بر اساس تاریخ',
-      description: 'نمودار خطی از نسبت نسخه‌های تقلبی بر حسب تاریخ پذیرش',
-      icon: TrendingUp,
-      category: 'زمانی',
-    },
-    {
       id: 'fraud-ratio-by-ins-cover',
       title: 'نسبت تقلب بر اساس پوشش بیمه',
       description: 'نمودار میله‌ای از نسبت نسخه‌های تقلبی بر اساس نوع پوشش بیمه',
@@ -81,40 +74,9 @@ const ChartsGallery: React.FC = () => {
       icon: FileText,
       category: 'اداری',
     },
-    {
-      id: 'fraud-ratio-by-medical-record-type',
-      title: 'نسبت تقلب بر اساس نوع پرونده',
-      description: 'نمودار میله‌ای از نسبت نسخه‌های تقلبی بر اساس نوع پرونده پزشکی',
-      icon: FileText,
-      category: 'اداری',
-    },
-    {
-      id: 'provider-risk-indicator',
-      title: 'شاخص ریسک پزشک',
-      description: 'نمودار شاخص ریسک برای پزشک خاص در طول زمان',
-      icon: Activity,
-      category: 'شاخص‌های ریسک',
-      requiresParams: true,
-      params: [
-        { name: 'provider_name', label: 'نام پزشک', type: 'text', placeholder: 'نام پزشک را وارد کنید' },
-        { name: 'indicator', label: 'نوع شاخص', type: 'select', options: ['cost', 'frequency', 'pattern'] }
-      ]
-    },
-    {
-      id: 'patient-risk-indicator',
-      title: 'شاخص ریسک بیمار',
-      description: 'نمودار شاخص ریسک برای بیمار خاص در طول زمان',
-      icon: AlertTriangle,
-      category: 'شاخص‌های ریسک',
-      requiresParams: true,
-      params: [
-        { name: 'patient_id', label: 'شماره بیمار', type: 'number', placeholder: 'شماره بیمار را وارد کنید' },
-        { name: 'indicator', label: 'نوع شاخص', type: 'select', options: ['cost', 'frequency', 'pattern'] }
-      ]
-    },
   ];
 
-  const fetchChart = async (chartId: string, params?: any) => {
+  const fetchChart = async (chartId: string) => {
     setLoading(true);
     setError(null);
     setSelectedChart(chartId);
@@ -155,20 +117,6 @@ const ChartsGallery: React.FC = () => {
         case 'fraud-ratio-by-medical-record-type':
           response = await apiService.getFraudRatioByMedicalRecordTypeChart();
           break;
-        case 'provider-risk-indicator':
-          if (params?.provider_name && params?.indicator) {
-            response = await apiService.getProviderRiskIndicatorChart(params.provider_name, params.indicator);
-          } else {
-            throw new Error('لطفاً نام پزشک و نوع شاخص را وارد کنید');
-          }
-          break;
-        case 'patient-risk-indicator':
-          if (params?.patient_id && params?.indicator) {
-            response = await apiService.getPatientRiskIndicatorChart(Number(params.patient_id), params.indicator);
-          } else {
-            throw new Error('لطفاً شماره بیمار و نوع شاخص را وارد کنید');
-          }
-          break;
         default:
           throw new Error('نمودار مورد نظر یافت نشد');
       }
@@ -186,18 +134,6 @@ const ChartsGallery: React.FC = () => {
     ? charts.filter(chart => chart.category === selectedCategory)
     : charts;
 
-  const [chartParams, setChartParams] = useState<Record<string, any>>({});
-
-  const handleParamChange = (chartId: string, paramName: string, value: any) => {
-    setChartParams(prev => ({
-      ...prev,
-      [chartId]: {
-        ...prev[chartId],
-        [paramName]: value
-      }
-    }));
-  };
-
   const handleChartClick = (chart: any) => {
     if (chart.requiresParams) {
       // For charts that require parameters, we'll show a modal or form
@@ -206,50 +142,6 @@ const ChartsGallery: React.FC = () => {
     } else {
       fetchChart(chart.id);
     }
-  };
-
-  const renderChartParams = (chart: any) => {
-    if (!chart.requiresParams) return null;
-
-    return (
-      <div className="p-4 bg-gray-50 rounded-lg mb-4">
-        <h4 className="font-medium text-gray-900 mb-3">پارامترهای مورد نیاز</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {chart.params.map((param: any) => (
-            <div key={param.name}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {param.label}
-              </label>
-              {param.type === 'select' ? (
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  onChange={(e) => handleParamChange(chart.id, param.name, e.target.value)}
-                >
-                  <option value="">انتخاب کنید</option>
-                  {param.options.map((option: string) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type={param.type}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder={param.placeholder}
-                  onChange={(e) => handleParamChange(chart.id, param.name, e.target.value)}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-        <button
-          onClick={() => fetchChart(chart.id, chartParams[chart.id])}
-          className="mt-3 btn-primary"
-          disabled={!chartParams[chart.id] || Object.values(chartParams[chart.id] || {}).some(v => !v)}
-        >
-          نمایش نمودار
-        </button>
-      </div>
-    );
   };
 
   return (
@@ -306,11 +198,6 @@ const ChartsGallery: React.FC = () => {
                       <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
                         {chart.category}
                       </span>
-                      {chart.requiresParams && (
-                        <span className="inline-block px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 rounded">
-                          نیاز به پارامتر
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -332,7 +219,7 @@ const ChartsGallery: React.FC = () => {
               <div className="text-center">
                 <div className="text-red-600 mb-4">{error}</div>
                 <button
-                  onClick={() => selectedChart && fetchChart(selectedChart, chartParams[selectedChart])}
+                  onClick={() => selectedChart && fetchChart(selectedChart)}
                   className="btn-primary"
                 >
                   تلاش مجدد
@@ -353,11 +240,6 @@ const ChartsGallery: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* نمایش پارامترها برای نمودارهای انتخاب شده */}
-          {selectedChart && charts.find(c => c.id === selectedChart)?.requiresParams && (
-            renderChartParams(charts.find(c => c.id === selectedChart)!)
-          )}
         </div>
       </div>
     </div>

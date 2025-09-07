@@ -212,6 +212,19 @@ class MemoryOptimizedFraudDetectionApp:
         """Register error handlers"""
         self.app.register_error_handler(FraudDetectionError, handle_exception)
         self.app.register_error_handler(Exception, handle_exception)
+        
+        # Add specific handler for matplotlib/tkinter errors
+        @self.app.errorhandler(RuntimeError)
+        def handle_runtime_error(e):
+            if "main thread is not in main loop" in str(e) or "tkinter" in str(e).lower():
+                logger.warning(f"Matplotlib/tkinter error caught and handled: {str(e)}")
+                return jsonify({
+                    'error': 'Chart generation temporarily unavailable',
+                    'message': 'Please try again in a moment',
+                    'status': 'chart_service_error'
+                }), 503
+            else:
+                return handle_exception(e)
     
     def _log_memory_usage(self, stage: str):
         """Log current memory usage"""

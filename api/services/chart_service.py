@@ -3,6 +3,9 @@ Chart generation service for fraud detection API
 سرویس تولید نمودار برای API تشخیص تقلب
 """
 
+import matplotlib
+# Set backend to Agg before importing pyplot to avoid tkinter issues in server environment
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
@@ -39,8 +42,10 @@ class ChartService:
         Raises:
             ChartGenerationError: If chart generation fails
         """
+        fig = None
         try:
-            plt.figure(figsize=app_config.chart_figsize)
+            # Create figure with error handling
+            fig = plt.figure(figsize=app_config.chart_figsize)
             
             if chart_type == 'risk_indicators':
                 return self._create_risk_indicators_chart(**kwargs)
@@ -77,25 +82,49 @@ class ChartService:
             logger.error(f"Error creating chart {chart_type}: {str(e)}")
             raise ChartGenerationError(f"Failed to create chart: {str(e)}", chart_type=chart_type)
         finally:
-            plt.close('all')  # Ensure all plots are closed
+            # Ensure all plots are closed properly
+            if fig is not None:
+                plt.close(fig)
+            plt.close('all')  # Close any remaining figures
     
     def _create_risk_indicators_chart(self, risk_values: List[float]) -> str:
         """Create risk indicators bar chart"""
-        risk_indices = [
-            'unq_ratio_provider', 'unq_ratio_patient', 'percent_change_provider',
-            'percent_change_patient', 'percent_difference', 'percent_diff_ser',
-            'percent_diff_spe', 'percent_diff_spe2', 'percent_diff_ser_patient',
-            'percent_diff_serv', 'Ratio'
-        ]
-        
-        plt.bar(risk_indices, risk_values, color='skyblue')
-        plt.xlabel('شاخص‌های ریسک')
-        plt.ylabel('مقدار شاخص ریسک (0 تا 100)')
-        plt.title('مقدار هر یک از شاخص‌های ریسک نسخه پزشکی')
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        
-        return self._figure_to_base64()
+        try:
+            risk_indices = [
+                'نسبت منحصر به فرد ارائه‌دهنده', 'نسبت منحصر به فرد بیمار', 'درصد تغییر ارائه‌دهنده',
+                'درصد تغییر بیمار', 'درصد تفاوت', 'درصد تفاوت خدمت',
+                'درصد تفاوت تخصص', 'درصد تفاوت تخصص 2', 'درصد تفاوت خدمت بیمار',
+                'درصد تفاوت خدمات', 'نسبت'
+            ]
+            
+            # Validate risk_values
+            if not risk_values or len(risk_values) == 0:
+                logger.warning("No risk values provided for risk indicators chart")
+                risk_values = [0] * len(risk_indices)
+            elif len(risk_values) != len(risk_indices):
+                logger.warning(f"Risk values length ({len(risk_values)}) doesn't match indices length ({len(risk_indices)})")
+                # Pad or truncate to match
+                if len(risk_values) < len(risk_indices):
+                    risk_values.extend([0] * (len(risk_indices) - len(risk_values)))
+                else:
+                    risk_values = risk_values[:len(risk_indices)]
+            
+            # Ensure all values are numeric and within reasonable range
+            risk_values = [float(val) if val is not None else 0.0 for val in risk_values]
+            risk_values = [max(0, min(100, val)) for val in risk_values]  # Clamp between 0 and 100
+            
+            plt.bar(risk_indices, risk_values, color='skyblue')
+            plt.xlabel('شاخص‌های ریسک')
+            plt.ylabel('مقدار شاخص ریسک (0 تا 100)')
+            plt.title('مقدار هر یک از شاخص‌های ریسک نسخه پزشکی')
+            plt.xticks(rotation=90, ha='center')
+            plt.tight_layout()
+            
+            return self._figure_to_base64()
+            
+        except Exception as e:
+            logger.error(f"Error creating risk indicators chart: {str(e)}")
+            raise ChartGenerationError(f"Failed to create risk indicators chart: {str(e)}", chart_type="risk_indicators")
     
     def _create_fraud_by_province_chart(self) -> str:
         """Create fraud by province bar chart"""

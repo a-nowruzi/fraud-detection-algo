@@ -18,6 +18,10 @@ const PredictionForm: React.FC = () => {
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [riskChart, setRiskChart] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [predictionLoading, setPredictionLoading] = useState(false);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [predictionComplete, setPredictionComplete] = useState(false);
+  const [chartComplete, setChartComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [services, setServices] = useState<string[]>([]);
   const [specialties, setSpecialties] = useState<string[]>([]);
@@ -89,19 +93,38 @@ const PredictionForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setPredictionLoading(true);
+    setChartLoading(true);
+    setPredictionComplete(false);
+    setChartComplete(false);
     setError(null);
     setPrediction(null);
     setRiskChart(null);
 
     try {
-      // Get both prediction and risk indicators chart
-      const [predictionResult, riskIndicatorsResult] = await Promise.all([
-        apiService.predictFraud(formData),
-        apiService.getRiskIndicatorsChart(formData)
-      ]);
+      // Start both API calls
+      const predictionPromise = apiService.predictFraud(formData).then((result) => {
+        setPrediction(result);
+        setPredictionLoading(false);
+        setPredictionComplete(true);
+        return result;
+      }).catch((err) => {
+        setPredictionLoading(false);
+        throw err;
+      });
 
-      setPrediction(predictionResult);
-      setRiskChart(riskIndicatorsResult.chart);
+      const chartPromise = apiService.getRiskIndicatorsChart(formData).then((result) => {
+        setRiskChart(result.chart);
+        setChartLoading(false);
+        setChartComplete(true);
+        return result;
+      }).catch((err) => {
+        setChartLoading(false);
+        throw err;
+      });
+
+      // Wait for both to complete
+      await Promise.all([predictionPromise, chartPromise]);
     } catch (err) {
       setError('خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.');
       console.error('Prediction error:', err);
@@ -188,10 +211,10 @@ const PredictionForm: React.FC = () => {
               />
             </div>
 
-            {/* نام پزشک */}
+            {/* ارائه دهنده خدمت */}
             <div>
               <label htmlFor="provider_name" className="block text-sm font-medium text-gray-700 mb-2">
-                نام پزشک *
+                ارائه دهنده خدمت *
               </label>
               <input
                 type="text"
@@ -259,6 +282,52 @@ const PredictionForm: React.FC = () => {
             </button>
           </div>
         </form>
+
+        {/* نمایش وضعیت بارگذاری */}
+        {(loading || predictionLoading || chartLoading || predictionComplete || chartComplete) && (
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-lg font-semibold text-blue-900 mb-4">وضعیت پردازش</h3>
+            <div className="space-y-3">
+              {/* وضعیت پیش‌بینی */}
+              <div className="flex items-center justify-between">
+                <span className="text-blue-700">تشخیص تقلب</span>
+                <div className="flex items-center">
+                  {predictionLoading && (
+                    <>
+                      <Loader2 className="ml-2 h-4 w-4 animate-spin text-blue-500" />
+                      <span className="text-blue-600 text-sm">در حال پردازش...</span>
+                    </>
+                  )}
+                  {predictionComplete && (
+                    <>
+                      <CheckCircle className="ml-2 h-4 w-4 text-green-500" />
+                      <span className="text-green-600 text-sm">تکمیل شد</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              
+              {/* وضعیت نمودار */}
+              <div className="flex items-center justify-between">
+                <span className="text-blue-700">نمودار شاخص‌های ریسک</span>
+                <div className="flex items-center">
+                  {chartLoading && (
+                    <>
+                      <Loader2 className="ml-2 h-4 w-4 animate-spin text-blue-500" />
+                      <span className="text-blue-600 text-sm">در حال پردازش...</span>
+                    </>
+                  )}
+                  {chartComplete && (
+                    <>
+                      <CheckCircle className="ml-2 h-4 w-4 text-green-500" />
+                      <span className="text-green-600 text-sm">تکمیل شد</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* نمایش خطا */}
         {error && (

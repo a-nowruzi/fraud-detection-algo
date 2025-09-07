@@ -19,8 +19,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigation = [
     { name: 'داشبورد', href: '/', icon: Home },
     { name: 'نمودارها', href: '/charts', icon: BarChart3 },
-    // { name: 'آمار سیستم', href: '/stats', icon: Activity },
-    { name: 'تست API', href: '/api-test', icon: Settings },
   ];
 
   useEffect(() => {
