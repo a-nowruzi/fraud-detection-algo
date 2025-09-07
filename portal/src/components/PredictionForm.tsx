@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { apiService, type PredictionResult, type PrescriptionData } from '../services/api';
 import { AlertCircle, CheckCircle, Loader2, BarChart3 } from 'lucide-react';
 import RiskIndicators from './RiskIndicators';
@@ -18,6 +18,57 @@ const PredictionForm: React.FC = () => {
   const [riskChart, setRiskChart] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [services, setServices] = useState<string[]>([]);
+  const [specialties, setSpecialties] = useState<string[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
+
+  // Fetch services and specialties on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setDataLoading(true);
+        setDataError(null);
+        
+        const [servicesResponse, specialtiesResponse] = await Promise.all([
+          apiService.getServices(),
+          apiService.getSpecialties()
+        ]);
+        
+        setServices(servicesResponse.services);
+        setSpecialties(specialtiesResponse.specialties);
+      } catch (err) {
+        setDataError('خطا در بارگذاری لیست خدمات و تخصص‌ها');
+        console.error('Error fetching services and specialties:', err);
+        
+        // Fallback to hardcoded values if API fails
+        setServices([
+          'ویزیت متخصص',
+          'ویزیت عمومی',
+          'دارو و ملزومات دارویی',
+          'آزمایش',
+          'رادیولوژی',
+          'فیزیوتراپی',
+          'جراحی',
+        ]);
+        setSpecialties([
+          'دکترای حرفه‌ای پزشکی',
+          'متخصص قلب و عروق',
+          'متخصص مغز و اعصاب',
+          'متخصص داخلی',
+          'متخصص اطفال',
+          'متخصص زنان و زایمان',
+          'متخصص ارتوپدی',
+          'متخصص چشم',
+          'متخصص پوست',
+        ]);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -51,27 +102,6 @@ const PredictionForm: React.FC = () => {
     }
   };
 
-  const services = [
-    'ویزیت متخصص',
-    'ویزیت عمومی',
-    'دارو و ملزومات دارویی',
-    'آزمایش',
-    'رادیولوژی',
-    'فیزیوتراپی',
-    'جراحی',
-  ];
-
-  const specialties = [
-    'دکترای حرفه‌ای پزشکی',
-    'متخصص قلب و عروق',
-    'متخصص مغز و اعصاب',
-    'متخصص داخلی',
-    'متخصص اطفال',
-    'متخصص زنان و زایمان',
-    'متخصص ارتوپدی',
-    'متخصص چشم',
-    'متخصص پوست',
-  ];
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -142,13 +172,21 @@ const PredictionForm: React.FC = () => {
                 value={formData.Service}
                 onChange={handleInputChange}
                 required
-                className="input-field"
+                disabled={dataLoading}
+                className="input-field disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="">انتخاب کنید</option>
+                <option value="">
+                  {dataLoading ? 'در حال بارگذاری...' : 'انتخاب کنید'}
+                </option>
                 {services.map(service => (
                   <option key={service} value={service}>{service}</option>
                 ))}
               </select>
+              {dataError && (
+                <p className="text-sm text-orange-600 mt-1">
+                  {dataError} - از مقادیر پیش‌فرض استفاده می‌شود
+                </p>
+              )}
             </div>
 
             {/* نام پزشک */}
@@ -179,13 +217,21 @@ const PredictionForm: React.FC = () => {
                 value={formData.provider_specialty}
                 onChange={handleInputChange}
                 required
-                className="input-field"
+                disabled={dataLoading}
+                className="input-field disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="">انتخاب کنید</option>
+                <option value="">
+                  {dataLoading ? 'در حال بارگذاری...' : 'انتخاب کنید'}
+                </option>
                 {specialties.map(specialty => (
                   <option key={specialty} value={specialty}>{specialty}</option>
                 ))}
               </select>
+              {dataError && (
+                <p className="text-sm text-orange-600 mt-1">
+                  {dataError} - از مقادیر پیش‌فرض استفاده می‌شود
+                </p>
+              )}
             </div>
 
             {/* مبلغ */}

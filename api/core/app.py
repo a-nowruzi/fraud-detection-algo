@@ -37,6 +37,7 @@ from services.prediction_service import PredictionService
 from services.chart_service import ChartService
 from routes.prediction_routes import prediction_bp, init_prediction_service
 from routes.chart_routes import chart_bp, init_chart_services
+from routes.services_routes import services_bp
 
 # Import custom functions
 from functions.age_calculate_function import calculate_age
@@ -205,6 +206,7 @@ class MemoryOptimizedFraudDetectionApp:
         """Register Flask blueprints"""
         self.app.register_blueprint(prediction_bp)
         self.app.register_blueprint(chart_bp)
+        self.app.register_blueprint(services_bp)
     
     def _register_error_handlers(self):
         """Register error handlers"""
@@ -245,9 +247,9 @@ class MemoryOptimizedFraudDetectionApp:
                         logger.error("Database connection failed - cannot retrain model")
                         return
                 else:
-                    return
+                    logger.info("Processed data file found, proceeding with model loading from disk")
             
-            # Initialize prediction service with streaming data
+            # Initialize prediction service
             logger.info("Initializing prediction service...")
             self.prediction_service = PredictionService()
             
@@ -255,9 +257,13 @@ class MemoryOptimizedFraudDetectionApp:
             if self.prediction_service.is_ready():
                 logger.info("Model already loaded from disk, skipping training")
             else:
-                # Train model with streaming data
-                logger.info("Starting model training...")
-                self._train_model_with_streaming()
+                if skip_db_init:
+                    logger.error("Model not ready and database initialization is skipped - cannot train model")
+                    return
+                else:
+                    # Train model with streaming data
+                    logger.info("Starting model training...")
+                    self._train_model_with_streaming()
             
             # Initialize chart service
             if self.prediction_service.is_ready():
@@ -474,6 +480,34 @@ class MemoryOptimizedFraudDetectionApp:
                     <span class="url">/cache/clear</span>
                     <p><strong>پاکسازی کش</strong></p>
                     <p>پاکسازی کش داده‌ها برای آزادسازی حافظه.</p>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method">GET</span>
+                    <span class="url">/services/list</span>
+                    <p><strong>لیست خدمات</strong></p>
+                    <p>دریافت لیست تمام خدمات موجود در سیستم.</p>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method">GET</span>
+                    <span class="url">/services/specialties</span>
+                    <p><strong>لیست تخصص‌ها</strong></p>
+                    <p>دریافت لیست تمام تخصص‌های پزشکی موجود در سیستم.</p>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method">GET</span>
+                    <span class="url">/services/providers</span>
+                    <p><strong>لیست ارائه‌دهندگان</strong></p>
+                    <p>دریافت لیست ارائه‌دهندگان خدمات با امکان فیلتر بر اساس تخصص یا خدمت.</p>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method">GET</span>
+                    <span class="url">/services/stats</span>
+                    <p><strong>آمار خدمات و تخصص‌ها</strong></p>
+                    <p>دریافت آمار کلی از خدمات، تخصص‌ها و ارائه‌دهندگان.</p>
                 </div>
                 
                 <h2>🔧 نحوه استفاده</h2>

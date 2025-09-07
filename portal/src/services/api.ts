@@ -57,6 +57,16 @@ export interface RiskIndicatorsResponse {
   prediction: PredictionResult;
 }
 
+export interface ServicesResponse {
+  services: string[];
+  count: number;
+}
+
+export interface SpecialtiesResponse {
+  specialties: string[];
+  count: number;
+}
+
 export const apiService = {
   // پیش‌بینی تقلب برای نسخه جدید
   predictFraud: async (data: PrescriptionData): Promise<PredictionResult> => {
@@ -152,6 +162,18 @@ export const apiService = {
     const response = await api.get('/charts/patient-risk-indicator', {
       params: { patient_id: patientId, indicator }
     });
+    return response.data;
+  },
+
+  // دریافت لیست خدمات
+  getServices: async (): Promise<ServicesResponse> => {
+    const response = await api.get('/services/list');
+    return response.data;
+  },
+
+  // دریافت لیست تخصص‌ها
+  getSpecialties: async (): Promise<SpecialtiesResponse> => {
+    const response = await api.get('/services/specialties');
     return response.data;
   },
 };
