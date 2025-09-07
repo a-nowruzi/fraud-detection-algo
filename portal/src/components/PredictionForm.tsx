@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiService, type PredictionResult, type PrescriptionData } from '../services/api';
 import { AlertCircle, CheckCircle, Loader2, BarChart3 } from 'lucide-react';
 import RiskIndicators from './RiskIndicators';
+import SearchableSelect from './SearchableSelect';
 
 const PredictionForm: React.FC = () => {
   const [formData, setFormData] = useState<PrescriptionData>({
@@ -75,6 +76,13 @@ const PredictionForm: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       [name]: name === 'ID' || name === 'cost_amount' ? Number(value) : value,
+    }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
     }));
   };
 
@@ -166,27 +174,18 @@ const PredictionForm: React.FC = () => {
               <label htmlFor="Service" className="block text-sm font-medium text-gray-700 mb-2">
                 نوع خدمت *
               </label>
-              <select
+              <SearchableSelect
                 id="Service"
                 name="Service"
                 value={formData.Service}
-                onChange={handleInputChange}
+                onChange={(value) => handleSelectChange('Service', value)}
+                options={services}
+                placeholder="انتخاب کنید"
                 required
                 disabled={dataLoading}
-                className="input-field disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="">
-                  {dataLoading ? 'در حال بارگذاری...' : 'انتخاب کنید'}
-                </option>
-                {services.map(service => (
-                  <option key={service} value={service}>{service}</option>
-                ))}
-              </select>
-              {dataError && (
-                <p className="text-sm text-orange-600 mt-1">
-                  {dataError} - از مقادیر پیش‌فرض استفاده می‌شود
-                </p>
-              )}
+                loading={dataLoading}
+                error={dataError ? `${dataError} - از مقادیر پیش‌فرض استفاده می‌شود` : undefined}
+              />
             </div>
 
             {/* نام پزشک */}
@@ -211,27 +210,18 @@ const PredictionForm: React.FC = () => {
               <label htmlFor="provider_specialty" className="block text-sm font-medium text-gray-700 mb-2">
                 تخصص پزشک *
               </label>
-              <select
+              <SearchableSelect
                 id="provider_specialty"
                 name="provider_specialty"
                 value={formData.provider_specialty}
-                onChange={handleInputChange}
+                onChange={(value) => handleSelectChange('provider_specialty', value)}
+                options={specialties}
+                placeholder="انتخاب کنید"
                 required
                 disabled={dataLoading}
-                className="input-field disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="">
-                  {dataLoading ? 'در حال بارگذاری...' : 'انتخاب کنید'}
-                </option>
-                {specialties.map(specialty => (
-                  <option key={specialty} value={specialty}>{specialty}</option>
-                ))}
-              </select>
-              {dataError && (
-                <p className="text-sm text-orange-600 mt-1">
-                  {dataError} - از مقادیر پیش‌فرض استفاده می‌شود
-                </p>
-              )}
+                loading={dataLoading}
+                error={dataError ? `${dataError} - از مقادیر پیش‌فرض استفاده می‌شود` : undefined}
+              />
             </div>
 
             {/* مبلغ */}
