@@ -43,6 +43,7 @@ class MemoryOptimizedPredictionService:
         self.model_path = os.path.join(self.models_dir, 'fraud_detection_model.pkl')
         self.scaler_path = os.path.join(self.models_dir, 'fraud_detection_scaler.pkl')
         self.metadata_path = os.path.join(self.models_dir, 'model_metadata.pkl')
+        self.data_path = os.path.join(self.models_dir, 'processed_data.pkl')
         
         # Ensure models directory exists
         os.makedirs(self.models_dir, exist_ok=True)
@@ -56,7 +57,8 @@ class MemoryOptimizedPredictionService:
         try:
             if (os.path.exists(self.model_path) and 
                 os.path.exists(self.scaler_path) and 
-                os.path.exists(self.metadata_path)):
+                os.path.exists(self.metadata_path) and
+                os.path.exists(self.data_path)):
                 
                 logger.info("Found existing model files, attempting to load...")
                 
@@ -72,9 +74,13 @@ class MemoryOptimizedPredictionService:
                 with open(self.metadata_path, 'rb') as f:
                     metadata = pickle.load(f)
                 
+                # Load processed data
+                with open(self.data_path, 'rb') as f:
+                    self.data_final = pickle.load(f)
+                
                 # Check if model is still valid (not too old)
                 if self._is_model_fresh(metadata):
-                    logger.info("Successfully loaded existing model")
+                    logger.info("Successfully loaded existing model and data")
                     return True
                 else:
                     logger.info("Existing model is outdated, will retrain")
@@ -111,10 +117,10 @@ class MemoryOptimizedPredictionService:
             return False
     
     def _save_model(self) -> None:
-        """Save trained model, scaler, and metadata"""
+        """Save trained model, scaler, metadata, and processed data"""
         try:
-            if self.clf is not None and self.scaler is not None:
-                logger.info("Saving trained model...")
+            if self.clf is not None and self.scaler is not None and self.data_final is not None:
+                logger.info("Saving trained model and data...")
                 
                 # Save model
                 with open(self.model_path, 'wb') as f:
@@ -123,6 +129,10 @@ class MemoryOptimizedPredictionService:
                 # Save scaler
                 with open(self.scaler_path, 'wb') as f:
                     pickle.dump(self.scaler, f)
+                
+                # Save processed data
+                with open(self.data_path, 'wb') as f:
+                    pickle.dump(self.data_final, f)
                 
                 # Save metadata
                 metadata = {
@@ -139,7 +149,7 @@ class MemoryOptimizedPredictionService:
                 with open(self.metadata_path, 'wb') as f:
                     pickle.dump(metadata, f)
                 
-                logger.info("Model saved successfully")
+                logger.info("Model and data saved successfully")
                 
         except Exception as e:
             logger.error(f"Error saving model: {str(e)}")
@@ -155,7 +165,7 @@ class MemoryOptimizedPredictionService:
             self.data_final = None
             
             # Remove existing model files
-            for file_path in [self.model_path, self.scaler_path, self.metadata_path]:
+            for file_path in [self.model_path, self.scaler_path, self.metadata_path, self.data_path]:
                 if os.path.exists(file_path):
                     os.remove(file_path)
                     logger.info(f"Removed {file_path}")

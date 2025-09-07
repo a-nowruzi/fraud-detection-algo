@@ -8,7 +8,7 @@ os.environ.setdefault('ENABLE_STREAMING', 'True')
 os.environ.setdefault('ENABLE_ASYNC_INIT', 'False')  # Disabled for Gunicorn
 os.environ.setdefault('MEMORY_CLEANUP_INTERVAL', '300')
 os.environ.setdefault('MAX_MEMORY_USAGE_MB', '2048')
-os.environ.setdefault('SKIP_DB_INIT', 'False')
+os.environ.setdefault('SKIP_DB_INIT', 'True')
 os.environ.setdefault('GUNICORN_MODE', 'True')  # Enable Gunicorn optimizations
 
 from flask import Flask, jsonify, render_template_string
@@ -234,7 +234,18 @@ class MemoryOptimizedFraudDetectionApp:
                     return
             else:
                 logger.info("Skipping database initialization (SKIP_DB_INIT=True)")
-                return
+                # Check if processed data file exists, if not we need to retrain
+                data_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models', 'processed_data.pkl')
+                if not os.path.exists(data_path):
+                    logger.warning("Processed data file not found. Need to retrain model with database connection.")
+                    logger.info("Temporarily enabling database connection for one-time retraining...")
+                    # Temporarily enable database connection for retraining
+                    skip_db_init = False
+                    if not self.data_loader.db_manager.test_connection():
+                        logger.error("Database connection failed - cannot retrain model")
+                        return
+                else:
+                    return
             
             # Initialize prediction service with streaming data
             logger.info("Initializing prediction service...")

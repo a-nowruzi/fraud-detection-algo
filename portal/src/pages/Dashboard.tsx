@@ -178,7 +178,12 @@ const Dashboard: React.FC = () => {
           dataLabels: {
             enabled: true,
             formatter: function (opts: any) {
-              return opts.w.globals.seriesTotals[opts.seriesIndex].toLocaleString('fa-IR');
+              // Check if opts.w and opts.w.globals exist before accessing
+              if (opts.w && opts.w.globals && opts.w.globals.seriesTotals && opts.w.globals.seriesTotals[opts.seriesIndex]) {
+                return opts.w.globals.seriesTotals[opts.seriesIndex].toLocaleString('fa-IR');
+              }
+              // Fallback to the series value if globals is not available
+              return opts.value ? opts.value.toLocaleString('fa-IR') : '0';
             },
             style: {
               fontFamily: 'Estedad, sans-serif',

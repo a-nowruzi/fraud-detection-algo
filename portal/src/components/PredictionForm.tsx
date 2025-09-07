@@ -11,7 +11,7 @@ const PredictionForm: React.FC = () => {
     Service: '',
     provider_name: '',
     provider_specialty: '',
-    cost_amount: 0,
+    cost_amount: 0
   });
 
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
@@ -40,7 +40,7 @@ const PredictionForm: React.FC = () => {
         apiService.predictFraud(formData),
         apiService.getRiskIndicatorsChart(formData)
       ]);
-      
+
       setPrediction(predictionResult);
       setRiskChart(riskIndicatorsResult.chart);
     } catch (err) {
@@ -77,7 +77,7 @@ const PredictionForm: React.FC = () => {
     <div className="max-w-4xl mx-auto">
       <div className="card">
         <h2 className="text-2xl font-bold mb-6 text-gray-900">اطلاعات نسخه</h2>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* شماره بیمار */}
@@ -238,24 +238,22 @@ const PredictionForm: React.FC = () => {
         {prediction && (
           <div className="mt-8 space-y-6">
             {/* نتیجه پیش‌بینی */}
-            <div className={`p-6 rounded-lg border-2 ${
-              prediction.is_fraud 
-                ? 'bg-danger-50 border-danger-200' 
+            <div className={`p-6 rounded-lg border-2 ${prediction.is_fraud
+                ? 'bg-danger-50 border-danger-200'
                 : 'bg-success-50 border-success-200'
-            }`}>
+              }`}>
               <div className="flex items-center mb-4">
                 {prediction.is_fraud ? (
                   <AlertCircle className="ml-2 h-6 w-6 text-danger-500" />
                 ) : (
                   <CheckCircle className="ml-2 h-6 w-6 text-success-500" />
                 )}
-                <h3 className={`text-lg font-semibold ${
-                  prediction.is_fraud ? 'text-danger-700' : 'text-success-700'
-                }`}>
+                <h3 className={`text-lg font-semibold ${prediction.is_fraud ? 'text-danger-700' : 'text-success-700'
+                  }`}>
                   {prediction.is_fraud ? '⚠️ نسخه مشکوک به تقلب' : '✅ نسخه سالم'}
                 </h3>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-gray-900">
@@ -297,9 +295,9 @@ const PredictionForm: React.FC = () => {
 
             {/* شاخص‌های ریسک */}
             <div className="p-6 bg-white rounded-lg border border-gray-200">
-              <RiskIndicators 
-                riskScores={prediction.risk_scores} 
-                features={prediction.features} 
+              <RiskIndicators
+                riskScores={prediction.risk_scores}
+                features={prediction.features}
               />
             </div>
           </div>
