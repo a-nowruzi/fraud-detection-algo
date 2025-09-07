@@ -304,24 +304,47 @@ class MemoryOptimizedPredictionService:
             raise ModelNotReadyError()
         
         try:
+            logger.info(f"Starting prediction for prescription ID: {prescription_data.get('ID', 'unknown')}")
+            
             # Create new sample DataFrame efficiently
             new_sample = pd.DataFrame([prescription_data])
+            logger.info(f"Created new_sample DataFrame with shape: {new_sample.shape}")
             
             # Convert dates efficiently
             new_sample['Adm_date'] = new_sample['Adm_date'].apply(shamsi_to_miladi)
             new_sample['Adm_date'] = pd.to_datetime(new_sample['Adm_date'])
             new_sample['age'] = new_sample['jalali_date'].apply(calculate_age)
             new_sample['year_month'] = new_sample['Adm_date'].dt.to_period('M')
+            logger.info(f"Processed dates and created year_month column")
             
             # Select required fields for feature calculation - use minimal data
             features1 = ['ID', 'jalali_date', 'Adm_date', 'Service', 'provider_name', 
                         'provider_specialty', 'cost_amount', 'age', 'year_month']
             
-            # Create a minimal copy of data for feature calculation
-            data1 = self.data[features1].copy()
+            # Check if self.data is available, if not use self.data_final
+            logger.info(f"self.data is None: {self.data is None}")
+            if self.data is not None:
+                # Create a minimal copy of data for feature calculation
+                data1 = self.data[features1].copy()
+                logger.info(f"Using self.data for feature calculation, shape: {data1.shape}")
+            else:
+                # If self.data is None (model loaded from disk), create a minimal dataset
+                # from the available columns in data_final
+                available_features = [col for col in features1 if col in self.data_final.columns]
+                logger.info(f"Available features in data_final: {available_features}")
+                if available_features:
+                    data1 = self.data_final[available_features].copy()
+                    logger.info(f"Using data_final for feature calculation, shape: {data1.shape}")
+                else:
+                    # If no features available, create a minimal dataset with just the new record
+                    # This ensures feature functions have some data to work with
+                    data1 = new_sample[features1].copy()
+                    logger.info(f"Using new_sample for feature calculation, shape: {data1.shape}")
             
             # Calculate features using helper function
+            logger.info("Starting feature calculation...")
             self._calculate_all_features_efficiently(data1, new_sample)
+            logger.info("Feature calculation completed")
             
             # Select features for prediction
             new_sample_final = new_sample[self._feature_columns].copy()
@@ -337,17 +360,45 @@ class MemoryOptimizedPredictionService:
             probabilities = norm.cdf(normalized_array)
             scaled_risk_scores = (probabilities * 100).flatten()
             
-            # Clean up temporary data
-            del data1, new_sample, new_sample_final
-            gc.collect()
+            # Store features before cleanup and ensure JSON serialization
+            features_dict = new_sample_final.iloc[0].to_dict()
             
-            return {
+            # Convert numpy types to Python native types for JSON serialization
+            def convert_to_json_serializable(obj):
+                """Convert numpy types and other non-serializable types to JSON-serializable types"""
+                if hasattr(obj, 'item'):  # numpy scalar
+                    return obj.item()
+                elif hasattr(obj, 'tolist'):  # numpy array
+                    return obj.tolist()
+                elif isinstance(obj, (np.integer, np.floating)):
+                    return obj.item()
+                elif isinstance(obj, np.bool_):
+                    return bool(obj)
+                elif isinstance(obj, (np.ndarray,)):
+                    return obj.tolist()
+                else:
+                    return obj
+            
+            # Convert all values in features_dict to JSON-serializable types
+            features_dict = {k: convert_to_json_serializable(v) for k, v in features_dict.items()}
+            
+            # Prepare response data
+            response_data = {
                 'prediction': int(y_new_pred[0]),
                 'score': float(scores_new[0]),
-                'is_fraud': y_new_pred[0] == -1,
+                'is_fraud': bool(y_new_pred[0] == -1),  # Ensure boolean is Python bool, not numpy bool
                 'risk_scores': scaled_risk_scores.tolist(),
-                'features': new_sample_final.iloc[0].to_dict() if 'new_sample_final' in locals() else {}
+                'features': features_dict
             }
+            
+            # Debug: Check for any remaining non-serializable types
+            logger.info(f"Response data types: {[(k, type(v)) for k, v in response_data.items()]}")
+            
+            # Clean up temporary data
+            del data1, new_sample
+            gc.collect()
+            
+            return response_data
             
         except Exception as e:
             logger.error(f"Error predicting new prescription: {str(e)}")
@@ -384,8 +435,16 @@ class MemoryOptimizedPredictionService:
             ]
             
             for func, feature_name in feature_functions:
-                result = func(data1, new_sample)
-                new_sample[feature_name] = result[feature_name]
+                try:
+                    result = func(data1, new_sample)
+                    if result is not None and hasattr(result, '__getitem__'):
+                        new_sample[feature_name] = result[feature_name]
+                    else:
+                        logger.warning(f"Feature function {func.__name__} returned None or invalid result, setting {feature_name} to 0")
+                        new_sample[feature_name] = 0
+                except Exception as feature_error:
+                    logger.warning(f"Error calculating feature {feature_name} with {func.__name__}: {str(feature_error)}, setting to 0")
+                    new_sample[feature_name] = 0
                 
         except Exception as e:
             logger.error(f"Error calculating features: {str(e)}")
