@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { apiService } from '../services/api';
-import { BarChart3, MapPin, Users, Calendar, CreditCard, FileText } from 'lucide-react';
+import { BarChart3, MapPin, Users, CreditCard, FileText } from 'lucide-react';
 
 const ChartsGallery: React.FC = () => {
   const [selectedChart, setSelectedChart] = useState<string | null>(null);
@@ -26,13 +26,6 @@ const ChartsGallery: React.FC = () => {
       category: 'جمعیت‌شناسی',
     },
     {
-      id: 'fraud-by-age',
-      title: 'تقلب بر اساس گروه سنی',
-      description: 'نمودار دایره‌ای از نسبت نسخه‌های تقلبی بر اساس گروه سنی',
-      icon: Users,
-      category: 'جمعیت‌شناسی',
-    },
-    {
       id: 'fraud-ratio-by-age-group',
       title: 'نسبت تقلب بر اساس گروه سنی',
       description: 'نمودار میله‌ای از نسبت نسخه‌های تقلبی در هر گروه سنی',
@@ -52,13 +45,6 @@ const ChartsGallery: React.FC = () => {
       description: 'نمودار میله‌ای از درصد نسخه‌های تقلبی در هر استان بر حسب جنسیت',
       icon: BarChart3,
       category: 'تحلیلی',
-    },
-    {
-      id: 'fraud-counts-by-date',
-      title: 'تعداد تقلب بر اساس تاریخ',
-      description: 'نمودار خطی از تعداد نسخه‌های تقلبی بر حسب تاریخ پذیرش',
-      icon: Calendar,
-      category: 'زمانی',
     },
     {
       id: 'fraud-ratio-by-ins-cover',
@@ -130,7 +116,7 @@ const ChartsGallery: React.FC = () => {
   };
 
   const categories = Array.from(new Set(charts.map(chart => chart.category)));
-  const filteredCharts = selectedCategory 
+  const filteredCharts = selectedCategory
     ? charts.filter(chart => chart.category === selectedCategory)
     : charts;
 
@@ -151,11 +137,10 @@ const ChartsGallery: React.FC = () => {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setSelectedCategory(null)}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            !selectedCategory
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${!selectedCategory
               ? 'bg-primary-600 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
+            }`}
         >
           همه
         </button>
@@ -163,11 +148,10 @@ const ChartsGallery: React.FC = () => {
           <button
             key={category}
             onClick={() => setSelectedCategory(category)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedCategory === category
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === category
                 ? 'bg-primary-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+              }`}
           >
             {category}
           </button>
@@ -183,15 +167,15 @@ const ChartsGallery: React.FC = () => {
               <div
                 key={chart.id}
                 onClick={() => handleChartClick(chart)}
-                className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-                  selectedChart === chart.id
+                className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${selectedChart === chart.id
                     ? 'border-primary-500 bg-primary-50'
                     : 'border-gray-200 hover:border-gray-300'
-                }`}
+                  }`}
+                style={{ cursor: 'pointer' }}
               >
                 <div className="flex items-start">
                   <chart.icon className="h-5 w-5 text-gray-500 mt-0.5 ml-3" />
-                  <div className="flex-1">
+                  <div className="flex-1" style={{ marginRight: '5px' }}>
                     <h4 className="font-medium text-gray-900">{chart.title}</h4>
                     <p className="text-sm text-gray-600 mt-1">{chart.description}</p>
                     <div className="flex items-center mt-2 gap-2">
