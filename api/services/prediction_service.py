@@ -1,6 +1,6 @@
 """
-Memory-optimized prediction service for fraud detection API
-سرویس پیش‌بینی بهینه‌سازی شده حافظه برای API تشخیص تقلب
+Prediction service for fraud detection API
+سرویس پیش‌بینی برای API تشخیص تقلب
 """
 
 import pandas as pd
@@ -23,8 +23,8 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-class MemoryOptimizedPredictionService:
-    """Memory-optimized service for handling fraud predictions"""
+class PredictionService:
+    """Service for handling fraud predictions"""
     
     def __init__(self, data: pd.DataFrame = None, clf: IsolationForest = None, scaler: StandardScaler = None):
         self.data = data
@@ -44,6 +44,7 @@ class MemoryOptimizedPredictionService:
         self.scaler_path = os.path.join(self.models_dir, 'fraud_detection_scaler.pkl')
         self.metadata_path = os.path.join(self.models_dir, 'model_metadata.pkl')
         self.data_path = os.path.join(self.models_dir, 'processed_data.pkl')
+        self.sample_data_path = os.path.join(self.models_dir, 'sample_historical_data.pkl')
         
         # Ensure models directory exists
         os.makedirs(self.models_dir, exist_ok=True)
@@ -77,6 +78,14 @@ class MemoryOptimizedPredictionService:
                 # Load processed data
                 with open(self.data_path, 'rb') as f:
                     self.data_final = pickle.load(f)
+                
+                # Load sample historical data if available
+                if os.path.exists(self.sample_data_path):
+                    with open(self.sample_data_path, 'rb') as f:
+                        self.data = pickle.load(f)
+                    logger.info("Loaded sample historical data for feature calculation")
+                else:
+                    logger.info("No sample historical data found, will use simplified feature calculation")
                 
                 # Check if model is still valid (not too old)
                 if self._is_model_fresh(metadata):
@@ -134,6 +143,17 @@ class MemoryOptimizedPredictionService:
                 with open(self.data_path, 'wb') as f:
                     pickle.dump(self.data_final, f)
                 
+                # Save sample historical data for feature calculation
+                if self.data is not None:
+                    # Save a sample of the original data for feature calculation
+                    sample_data_path = os.path.join(self.models_dir, 'sample_historical_data.pkl')
+                    # Take a random sample of 1000 records to keep file size manageable
+                    sample_size = min(1000, len(self.data))
+                    sample_data = self.data.sample(n=sample_size, random_state=42)
+                    with open(sample_data_path, 'wb') as f:
+                        pickle.dump(sample_data, f)
+                    logger.info(f"Saved sample historical data with {sample_size} records")
+                
                 # Save metadata
                 metadata = {
                     'last_trained': datetime.now().isoformat(),
@@ -163,9 +183,10 @@ class MemoryOptimizedPredictionService:
             self.clf = None
             self.scaler = None
             self.data_final = None
+            self.data = None
             
             # Remove existing model files
-            for file_path in [self.model_path, self.scaler_path, self.metadata_path, self.data_path]:
+            for file_path in [self.model_path, self.scaler_path, self.metadata_path, self.data_path, self.sample_data_path]:
                 if os.path.exists(file_path):
                     os.remove(file_path)
                     logger.info(f"Removed {file_path}")
@@ -185,13 +206,13 @@ class MemoryOptimizedPredictionService:
     
     def train_model(self, data: pd.DataFrame) -> None:
         """
-        Train the Isolation Forest model with memory optimization
+        Train the Isolation Forest model
         
         Args:
             data: Training data with features
         """
         try:
-            logger.info("Starting memory-optimized model training...")
+            logger.info("Starting model training...")
             
             # Store reference to original data
             self.data = data
@@ -232,7 +253,7 @@ class MemoryOptimizedPredictionService:
             if model_config.auto_save:
                 self._save_model()
             
-            logger.info("Memory-optimized model training completed successfully")
+            logger.info("Model training completed successfully")
             
         except Exception as e:
             logger.error(f"Error training model: {str(e)}")
@@ -289,7 +310,7 @@ class MemoryOptimizedPredictionService:
     
     def predict_new_prescription(self, prescription_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Predict fraud for a new prescription with memory optimization
+        Predict fraud for a new prescription
         
         Args:
             prescription_data: Prescription data to predict
@@ -328,18 +349,17 @@ class MemoryOptimizedPredictionService:
                 data1 = self.data[features1].copy()
                 logger.info(f"Using self.data for feature calculation, shape: {data1.shape}")
             else:
-                # If self.data is None (model loaded from disk), create a minimal dataset
-                # from the available columns in data_final
-                available_features = [col for col in features1 if col in self.data_final.columns]
-                logger.info(f"Available features in data_final: {available_features}")
-                if available_features:
-                    data1 = self.data_final[available_features].copy()
-                    logger.info(f"Using data_final for feature calculation, shape: {data1.shape}")
-                else:
-                    # If no features available, create a minimal dataset with just the new record
-                    # This ensures feature functions have some data to work with
-                    data1 = new_sample[features1].copy()
-                    logger.info(f"Using new_sample for feature calculation, shape: {data1.shape}")
+                # If self.data is None (model loaded from disk), we need to handle this differently
+                # The feature functions require historical data, but we don't have it
+                # We'll use a simplified approach that doesn't rely on historical data
+                logger.warning("No historical data available for feature calculation. Using simplified feature calculation.")
+                
+                # Create a minimal dataset with just the new record for basic feature calculation
+                data1 = new_sample[features1].copy()
+                logger.info(f"Using new_sample for feature calculation, shape: {data1.shape}")
+                
+                # For features that require historical data, we'll calculate them differently
+                # This is a fallback approach when no training data is available
             
             # Calculate features using helper function
             logger.info("Starting feature calculation...")
@@ -405,8 +425,16 @@ class MemoryOptimizedPredictionService:
             raise
     
     def _calculate_all_features_efficiently(self, data1: pd.DataFrame, new_sample: pd.DataFrame) -> None:
-        """Calculate all features for the new sample with memory optimization"""
+        """Calculate all features for the new sample"""
         try:
+            # Check if we have historical data (more than just the new sample)
+            has_historical_data = len(data1) > 1 or (len(data1) == 1 and data1.index[0] != new_sample.index[0])
+            
+            if not has_historical_data:
+                logger.warning("No historical data available. Using simplified feature calculation based on input values only.")
+                self._calculate_features_without_historical_data(new_sample)
+                return
+            
             # Import feature calculation functions
             from functions.ftr_1_function import unique_providers_nf
             from functions.ftr_2_function import unique_patients_nf
@@ -450,8 +478,79 @@ class MemoryOptimizedPredictionService:
             logger.error(f"Error calculating features: {str(e)}")
             raise
     
+    def _calculate_features_without_historical_data(self, new_sample: pd.DataFrame) -> None:
+        """Calculate features when no historical data is available"""
+        try:
+            logger.info("Calculating features without historical data...")
+            
+            # Get the cost amount for the new sample
+            cost_amount = new_sample['cost_amount'].iloc[0]
+            
+            # Feature 1: Unique ratio provider - set to 1 (no historical data)
+            new_sample['unq_ratio_provider'] = 1.0
+            
+            # Feature 2: Unique ratio patient - set to 1 (no historical data)
+            new_sample['unq_ratio_patient'] = 1.0
+            
+            # Feature 3: Percent change provider - set to 0 (no historical data)
+            new_sample['percent_change_provider'] = 0.0
+            
+            # Feature 4: Percent change patient - set to 0 (no historical data)
+            new_sample['percent_change_patient'] = 0.0
+            
+            # Feature 5: Percent difference - calculate based on cost amount
+            # Use cost amount as a proxy for service cost difference
+            # Normalize cost amount to a reasonable range (0-100)
+            # Higher cost amounts should result in higher percent difference
+            normalized_cost = min(cost_amount / 1000000, 100)  # Cap at 100
+            new_sample['percent_difference'] = normalized_cost
+            
+            # Feature 6: Percent diff ser - calculate based on cost amount
+            # Use cost amount as a proxy for service cost difference
+            normalized_cost_ser = min(cost_amount / 1500000, 75)  # Cap at 75
+            new_sample['percent_diff_ser'] = normalized_cost_ser
+            
+            # Feature 7: Percent diff spe - calculate based on cost amount
+            # Use cost amount as a proxy for specialty cost difference
+            normalized_cost_spe = min(cost_amount / 1200000, 60)  # Cap at 60
+            new_sample['percent_diff_spe'] = normalized_cost_spe
+            
+            # Feature 7.2: Percent diff spe2 - calculate based on cost amount
+            # Use cost amount as a proxy for specialty cost difference
+            normalized_cost_spe2 = min(cost_amount / 1800000, 80)  # Cap at 80
+            new_sample['percent_diff_spe2'] = normalized_cost_spe2
+            
+            # Feature 8.1: Percent diff ser patient - calculate based on cost amount
+            # Use cost amount as a proxy for service cost difference
+            normalized_cost_ser_patient = min(cost_amount / 1600000, 70)  # Cap at 70
+            new_sample['percent_diff_ser_patient'] = normalized_cost_ser_patient
+            
+            # Feature 8.2: Percent diff serv - calculate based on cost amount
+            # Use cost amount as a proxy for service cost difference
+            normalized_cost_serv = min(cost_amount / 2000000, 50)  # Cap at 50
+            new_sample['percent_diff_serv'] = normalized_cost_serv
+            
+            # Feature 9: Ratio - calculate based on cost amount
+            # Higher cost amounts might indicate more diverse services
+            # Use a logarithmic scale to make it more sensitive to changes
+            import math
+            if cost_amount > 0:
+                ratio_value = min(math.log10(cost_amount / 100000) * 10, 50)  # Cap at 50
+                new_sample['Ratio'] = max(ratio_value, 0)  # Ensure non-negative
+            else:
+                new_sample['Ratio'] = 0.0
+            
+            logger.info(f"Features calculated without historical data. Cost amount: {cost_amount}")
+            logger.info(f"Calculated features: percent_difference={normalized_cost}, percent_diff_ser={normalized_cost_ser}, percent_diff_spe={normalized_cost_spe}")
+            
+        except Exception as e:
+            logger.error(f"Error calculating features without historical data: {str(e)}")
+            # Set all features to 0 as fallback
+            for feature in self._feature_columns:
+                new_sample[feature] = 0.0
+    
     def _attach_metadata_columns_efficiently(self) -> None:
-        """Attach metadata columns to data_final efficiently for chart generation"""
+        """Attach metadata columns to data_final for chart generation"""
         meta_columns = [
             'Adm_date', 'gender', 'age', 'Service', 'province',
             'Ins_Cover', 'Invice-type', 'Type_Medical_Record',
@@ -547,5 +646,5 @@ class MemoryOptimizedPredictionService:
         except Exception as e:
             logger.error(f"Error during prediction service memory cleanup: {str(e)}")
 
-# Keep the original class name for backward compatibility
-PredictionService = MemoryOptimizedPredictionService
+# Alias for backward compatibility
+MemoryOptimizedPredictionService = PredictionService

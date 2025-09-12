@@ -183,7 +183,7 @@ const Dashboard: React.FC = () => {
                 return opts.w.globals.seriesTotals[opts.seriesIndex].toLocaleString('fa-IR');
               }
               // Fallback to the series value if globals is not available
-              return opts.value ? opts.value.toLocaleString('fa-IR') : '0';
+              return opts.value ? opts.value.toLocaleString('fa-IR') : '';
             },
             style: {
               fontFamily: 'Estedad, sans-serif',
