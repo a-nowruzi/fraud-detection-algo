@@ -7,7 +7,7 @@ database configuration, exceptions, utilities, and validators.
 
 # Import core components
 from .app import create_app, FraudDetectionApp
-from .database_config import get_db_manager
+from config.config import get_db_manager
 from .exceptions import FraudDetectionError, handle_exception
 from .utils import clean_numeric_column, memory_usage_optimizer
 from .validators import validate_prescription_data, sanitize_input

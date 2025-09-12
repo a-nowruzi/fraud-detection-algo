@@ -8,7 +8,8 @@ This document describes the organized structure of the Fraud Detection API folde
 api/
 ├── core/                           # Core application files
 │   ├── app.py                     # Main Flask application
-│   ├── database_config.py         # Database configuration and management
+│   ├── config/
+│   │   └── config.py              # All configuration settings and database management
 │   ├── exceptions.py              # Custom exception classes
 │   ├── utils.py                   # Utility functions and helpers
 │   └── validators.py              # Input validation functions

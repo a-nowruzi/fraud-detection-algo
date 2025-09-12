@@ -4,7 +4,7 @@ Database setup script for MariaDB
 """
 
 import pandas as pd
-from database_config import get_db_manager
+from config.config import get_db_manager
 import logging
 
 # Configure logging

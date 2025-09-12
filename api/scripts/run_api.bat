@@ -73,10 +73,10 @@ echo ✅ Dependencies installed successfully.
 
 REM Check database connection
 echo 🔍 Checking database connection...
-python -c "from core.database_config import get_db_manager; db = get_db_manager(); print('✅ Database connection successful' if db.test_connection() else '❌ Database connection failed')"
+python -c "from config.config import get_db_manager; db = get_db_manager(); print('✅ Database connection successful' if db.test_connection() else '❌ Database connection failed')"
 if errorlevel 1 (
     echo ❌ Error: Database connection failed!
-    echo Please check your database configuration in database_config.py
+    echo Please check your database configuration in config/config.py
     echo Make sure the database server is running and accessible.
     pause
     exit /b 1

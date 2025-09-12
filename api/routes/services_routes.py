@@ -5,7 +5,7 @@ Services and specialties routes for fraud detection API
 
 from flask import Blueprint, request, jsonify
 from flasgger import swag_from
-from core.database_config import get_db_manager
+from config.config import get_db_manager
 from core.exceptions import ValidationError
 from sqlalchemy import text
 import logging

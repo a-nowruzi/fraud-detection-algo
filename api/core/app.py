@@ -32,7 +32,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.config import api_config, app_config, db_config, memory_config
 from core.exceptions import handle_exception, FraudDetectionError
-from core.database_config import get_db_manager
+from config.config import get_db_manager
 from services.prediction_service import PredictionService
 from services.chart_service import ChartService
 from routes.prediction_routes import prediction_bp, init_prediction_service
