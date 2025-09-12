@@ -1,73 +1,32 @@
 import pandas as pd
 import numpy as np
-from typing import Dict, Any, Union
 
-def unique_patients_nf(data: pd.DataFrame, new_record: Union[pd.DataFrame, Dict[str, Any]]) -> pd.Series:
-    """
-    Calculate unique patients ratio for fraud detection
+
+def unique_patients_nf(data, new_record):
+    # اضافه کردن رکورد جدید به داده‌های موجود
+    data = pd.concat([data, new_record], ignore_index=True)
+    ## total number of providers per month for each patient per prescription
+  
+    # محاسبه تعداد کل بیماران (شامل تکراری) ماهانه برای هر پزشک  
+    patients_count_per_month = data.groupby(['year_month', 'provider_name']).agg(  
+        total_patients_monthly=('ID', 'count')  # تعداد کل بیماران  
+    ).reset_index()  
+
+    # ادغام اطلاعات بیماران با DataFrame اصلی  
+    data = data.merge(patients_count_per_month, on=['year_month', 'provider_name'], how='left')  
+
+    # محاسبه تعداد پزشکان منحصر به فرد ماهانه برای هر یبمار  
+    unique_patients_per_month = data.groupby(['year_month', 'provider_name']).agg(  
+        unique_patients=('ID', 'nunique')  # تعداد پزشکان منحصر به فرد  
+    ).reset_index()  
+
+    # ادغام اطلاعات منحصر به فرد بیماران با DataFrame اصلی  
+    data = data.merge(unique_patients_per_month, on=['year_month', 'provider_name'], how='left')  
+    data['unq_ratio_patient']= data['total_patients_monthly'] / data ['unique_patients']  
+
+    # فرض بر اینکه می‌خواهید نتیجه برای رکوردم وارد شده را بگیرید
+    # پیدا کردن خانه مربوطه
+    last_index = data.index[-1]
     
-    Args:
-        data: Historical data DataFrame
-        new_record: New record to analyze (DataFrame or dict)
-        
-    Returns:
-        Series containing the calculated features for the new record
-    """
-    try:
-        # Input validation
-        if data.empty:
-            raise ValueError("Historical data cannot be empty")
-            
-        if isinstance(new_record, dict):
-            new_record = pd.DataFrame([new_record])
-        elif not isinstance(new_record, pd.DataFrame):
-            raise TypeError("new_record must be DataFrame or dict")
-            
-        # Ensure required columns exist
-        required_cols = ['year_month', 'provider_name', 'ID']
-        missing_cols = [col for col in required_cols if col not in data.columns]
-        if missing_cols:
-            raise ValueError(f"Missing required columns: {missing_cols}")
-            
-        # Create a copy to avoid modifying original data
-        working_data = data.copy()
-        
-        # Add new record
-        working_data = pd.concat([working_data, new_record], ignore_index=True)
-        
-        # Calculate total patients per month for each provider
-        patients_count_per_month = working_data.groupby(['year_month', 'provider_name']).agg(
-            total_patients_monthly=('ID', 'count')
-        ).reset_index()
-        
-        # Calculate unique patients per month for each provider
-        unique_patients_per_month = working_data.groupby(['year_month', 'provider_name']).agg(
-            unique_patients=('ID', 'nunique')
-        ).reset_index()
-        
-        # Merge results efficiently
-        working_data = working_data.merge(
-            patients_count_per_month, 
-            on=['year_month', 'provider_name'], 
-            how='left'
-        )
-        
-        working_data = working_data.merge(
-            unique_patients_per_month, 
-            on=['year_month', 'provider_name'], 
-            how='left'
-        )
-        
-        # Calculate ratio safely (avoid division by zero)
-        working_data['unq_ratio_patient'] = np.where(
-            working_data['unique_patients'] > 0,
-            working_data['total_patients_monthly'] / working_data['unique_patients'],
-            0
-        )
-        
-        # Return the last record (new record with calculated features)
-        return working_data.iloc[-1]
-        
-    except Exception as e:
-        print(f"Error in unique_patients_nf: {str(e)}")
-        raise
+    # برگرداندن ردیف نهایی که شامل نتایج حساب شده است
+    return data.iloc[last_index]
