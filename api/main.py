@@ -12,11 +12,11 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import the main application
-from core.app import create_app, MemoryOptimizedFraudDetectionApp
+from core.app import create_app, FraudDetectionApp
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("Starting Memory-Optimized Fraud Detection API")
+    print("Starting Fraud Detection API")
     print("=" * 60)
     
     # Create and run the application

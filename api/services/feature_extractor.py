@@ -1,6 +1,6 @@
 """
-Memory-optimized feature extraction service for fraud detection
-سرویس استخراج ویژگی‌های بهینه‌سازی شده حافظه برای تشخیص تقلب
+Feature extraction service for fraud detection
+سرویس استخراج ویژگی‌ها برای تشخیص تقلب
 """
 
 import pandas as pd
@@ -13,8 +13,8 @@ import gc
 
 logger = logging.getLogger(__name__)
 
-class MemoryOptimizedFeatureExtractor:
-    """Memory-optimized service for extracting features from prescription data"""
+class FeatureExtractor:
+    """Service for extracting features from prescription data"""
     
     def __init__(self, data: pd.DataFrame):
         self.data = data
@@ -27,11 +27,11 @@ class MemoryOptimizedFeatureExtractor:
     
     @performance_monitor
     def extract_all_features(self) -> pd.DataFrame:
-        """Extract all features from the dataset with memory optimization"""
+        """Extract all features from the dataset"""
         try:
-            logger.info("Starting memory-optimized feature extraction...")
+            logger.info("Starting feature extraction...")
             
-            # Extract features using helper methods with memory optimization
+            # Extract features using helper methods
             self._extract_provider_features_efficiently()
             self._extract_patient_features_efficiently()
             self._extract_service_features_efficiently()
@@ -41,7 +41,7 @@ class MemoryOptimizedFeatureExtractor:
             # Clean up memory after feature extraction
             gc.collect()
             
-            logger.info("Memory-optimized feature extraction completed successfully")
+            logger.info("Feature extraction completed successfully")
             return self.data
             
         except Exception as e:
@@ -49,7 +49,7 @@ class MemoryOptimizedFeatureExtractor:
             raise
     
     def _extract_provider_features_efficiently(self):
-        """Extract provider-related features with memory optimization"""
+        """Extract provider-related features"""
         logger.info("Extracting provider features efficiently...")
         
         # Feature 1: Ratio of total providers to unique providers
@@ -75,7 +75,7 @@ class MemoryOptimizedFeatureExtractor:
         gc.collect()
     
     def _extract_patient_features_efficiently(self):
-        """Extract patient-related features with memory optimization"""
+        """Extract patient-related features"""
         logger.info("Extracting patient features efficiently...")
         
         # Feature 2: Ratio of total patients to unique patients
@@ -103,7 +103,7 @@ class MemoryOptimizedFeatureExtractor:
         self._extract_cost_change_features_efficiently()
     
     def _extract_cost_change_features_efficiently(self):
-        """Extract cost change percentage features with memory optimization"""
+        """Extract cost change percentage features"""
         logger.info("Extracting cost change features efficiently...")
         
         # Provider cost change - use more efficient approach
@@ -155,7 +155,7 @@ class MemoryOptimizedFeatureExtractor:
         gc.collect()
     
     def _extract_service_features_efficiently(self):
-        """Extract service-related features with memory optimization"""
+        """Extract service-related features"""
         logger.info("Extracting service features efficiently...")
         
         # Feature 5: Service cost difference percentage
@@ -212,7 +212,7 @@ class MemoryOptimizedFeatureExtractor:
         gc.collect()
     
     def _extract_specialty_features_efficiently(self):
-        """Extract specialty-related features with memory optimization"""
+        """Extract specialty-related features"""
         logger.info("Extracting specialty features efficiently...")
         
         # Feature 7: Specialty cost change for provider
@@ -239,7 +239,7 @@ class MemoryOptimizedFeatureExtractor:
         gc.collect()
     
     def _extract_ratio_features_efficiently(self):
-        """Extract ratio-related features with memory optimization"""
+        """Extract ratio-related features"""
         logger.info("Extracting ratio features efficiently...")
         
         # Feature 9: Service ratio
@@ -269,5 +269,5 @@ class MemoryOptimizedFeatureExtractor:
         features_df.dropna(inplace=True)
         return features_df
 
-# Keep the original class name for backward compatibility
-FeatureExtractor = MemoryOptimizedFeatureExtractor
+# Alias for backward compatibility
+MemoryOptimizedFeatureExtractor = FeatureExtractor

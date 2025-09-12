@@ -1,7 +1,7 @@
 import os
 import sys
 
-# Set environment variables for memory optimization if not already set
+# Set environment variables for application configuration if not already set
 os.environ.setdefault('CHUNK_SIZE', '5000')
 os.environ.setdefault('MAX_CACHE_SIZE', '5')
 os.environ.setdefault('ENABLE_STREAMING', 'True')
@@ -51,7 +51,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler('logs/fraud_detection_optimized.log')
+        logging.FileHandler('logs/fraud_detection.log')
     ]
 )
 logger = logging.getLogger(__name__)
@@ -141,8 +141,8 @@ class LazyDataLoader:
             self._data_cache.clear()
             gc.collect()
 
-class MemoryOptimizedFraudDetectionApp:
-    """Memory-optimized main application class for fraud detection API (Gunicorn compatible)"""
+class FraudDetectionApp:
+    """Main application class for fraud detection API (Gunicorn compatible)"""
     
     def __init__(self):
         self.app = Flask(__name__)
@@ -437,18 +437,18 @@ class MemoryOptimizedFraudDetectionApp:
         </head>
         <body>
             <div class="container">
-                <h1>🔍 API تشخیص تقلب پزشکی (بهینه‌سازی شده)</h1>
+                <h1>🔍 API تشخیص تقلب پزشکی</h1>
                 
                 <div class="status """ + ("ready" if self.is_ready() else "not-ready") + """">
                     <strong>وضعیت سیستم:</strong> """ + ("آماده" if self.is_ready() else "در انتظار") + """
                 </div>
                 
                 <div class="warning">
-                    <strong>⚠️ توجه:</strong> این API برای تشخیص تقلب در نسخه‌های پزشکی طراحی شده است. <strong>نسخه بهینه‌سازی شده حافظه</strong>
+                    <strong>⚠️ توجه:</strong> این API برای تشخیص تقلب در نسخه‌های پزشکی طراحی شده است.
                 </div>
                 
                 <div class="config">
-                    <strong>⚙️ تنظیمات بهینه‌سازی:</strong>
+                    <strong>⚙️ تنظیمات سیستم:</strong>
                     <ul>
                         <li>اندازه قطعه داده: """ + str(memory_config.chunk_size) + """ رکورد</li>
                         <li>حداکثر کش: """ + str(memory_config.max_cache_size) + """ قطعه</li>
@@ -539,7 +539,7 @@ class MemoryOptimizedFraudDetectionApp:
      }'</pre>
                 </div>
                 
-                <h2>📊 ویژگی‌های سیستم (بهینه‌سازی شده)</h2>
+                <h2>📊 ویژگی‌های سیستم</h2>
                 <ul>
                     <li>تشخیص تقلب با الگوریتم Isolation Forest</li>
                     <li>محاسبه ۱۱ شاخص ریسک مختلف</li>
@@ -549,7 +549,7 @@ class MemoryOptimizedFraudDetectionApp:
                     <li>تحلیل بر اساس استان، جنسیت و گروه سنی</li>
                     <li>اعتبارسنجی ورودی و مدیریت خطا</li>
                     <li>مستندات تعاملی Swagger</li>
-                    <li><strong>بهینه‌سازی حافظه با بارگذاری تدریجی داده‌ها</strong></li>
+                    <li><strong>بارگذاری تدریجی داده‌ها</strong></li>
                     <li><strong>پردازش داده‌ها به صورت جریانی (Streaming)</strong></li>
                     <li><strong>کش هوشمند برای کاهش بارگذاری مجدد</strong></li>
                     <li><strong>مدیریت خودکار حافظه و پاکسازی</strong></li>
@@ -642,29 +642,29 @@ class MemoryOptimizedFraudDetectionApp:
         port = port or app_config.port
         debug = debug if debug is not None else app_config.debug
         
-        logger.info(f"Starting memory-optimized Flask server on {host}:{port}")
+        logger.info(f"Starting Flask server on {host}:{port}")
         logger.info("Services initialized synchronously")
         
         self.app.run(host=host, port=port, debug=debug)
 
-def create_app() -> MemoryOptimizedFraudDetectionApp:
-    """Create and configure the memory-optimized Flask application"""
-    app = MemoryOptimizedFraudDetectionApp()
+def create_app() -> FraudDetectionApp:
+    """Create and configure the Flask application"""
+    app = FraudDetectionApp()
     
     # Setup routes
     app.setup_routes()
     
-    logger.info("Memory-optimized application created successfully")
+    logger.info("Application created successfully")
     return app
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("Starting Memory-Optimized Fraud Detection API")
+    print("Starting Fraud Detection API")
     print("=" * 60)
     print(f"Start time: {datetime.now().isoformat()}")
     print()
     
-    print("Creating and configuring memory-optimized application...")
+    print("Creating and configuring application...")
     fraud_app = create_app()
     
     print("Starting Flask server...")

@@ -1,6 +1,6 @@
 """
-Memory-optimized database configuration for MariaDB connection
-پیکربندی پایگاه داده بهینه‌سازی شده حافظه برای اتصال MariaDB
+Database configuration for MariaDB connection
+پیکربندی پایگاه داده برای اتصال MariaDB
 """
 
 import pandas as pd
@@ -27,8 +27,8 @@ DB_CONFIG = {
     'autocommit': True
 }
 
-class MemoryOptimizedDatabaseManager:
-    """Memory-optimized database manager for connections and operations"""
+class DatabaseManager:
+    """Database manager for connections and operations"""
     
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or DB_CONFIG
@@ -36,7 +36,7 @@ class MemoryOptimizedDatabaseManager:
         self.connection = None
         
     def create_engine(self) -> bool:
-        """Create SQLAlchemy engine for database connection with memory optimization"""
+        """Create SQLAlchemy engine for database connection"""
         try:
             connection_string = (
                 f"mysql+pymysql://{self.config['user']}:{self.config['password']}"
@@ -49,7 +49,7 @@ class MemoryOptimizedDatabaseManager:
                 pool_pre_ping=True,
                 pool_recycle=3600,
                 echo=False,
-                # Memory optimization settings
+                # Connection pool settings
                 pool_size=5,
                 max_overflow=10,
                 pool_timeout=30
@@ -59,7 +59,7 @@ class MemoryOptimizedDatabaseManager:
             with self.engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             
-            logger.info("Memory-optimized database engine created successfully")
+            logger.info("Database engine created successfully")
             return True
             
         except Exception as e:
@@ -108,7 +108,7 @@ class MemoryOptimizedDatabaseManager:
     def load_data_from_db(self, table_name: str, query: Optional[str] = None, 
                          chunk_size: Optional[int] = None) -> Optional[pd.DataFrame]:
         """
-        Load data from database table with memory optimization
+        Load data from database table
         
         Args:
             table_name: Name of the table to load
@@ -126,7 +126,7 @@ class MemoryOptimizedDatabaseManager:
             
             with self.get_connection() as conn:
                 if chunk_size:
-                    # Load in chunks for memory optimization
+                    # Load in chunks for large datasets
                     return pd.read_sql(sql_query, conn, chunksize=chunk_size)
                 else:
                     df = pd.read_sql(sql_query, conn)
@@ -316,11 +316,11 @@ class MemoryOptimizedDatabaseManager:
             return None
 
 # Global database manager instance
-db_manager = MemoryOptimizedDatabaseManager()
+db_manager = DatabaseManager()
 
-def get_db_manager() -> MemoryOptimizedDatabaseManager:
-    """Get the global memory-optimized database manager instance"""
+def get_db_manager() -> DatabaseManager:
+    """Get the global database manager instance"""
     return db_manager
 
-# Keep the original class name for backward compatibility
-DatabaseManager = MemoryOptimizedDatabaseManager
+# Alias for backward compatibility
+MemoryOptimizedDatabaseManager = DatabaseManager

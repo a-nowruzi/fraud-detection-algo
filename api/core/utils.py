@@ -285,7 +285,7 @@ def memory_usage_optimizer(df: pd.DataFrame) -> pd.DataFrame:
         df: DataFrame to optimize
         
     Returns:
-        Memory-optimized DataFrame
+        DataFrame with optimized memory usage
     """
     try:
         original_memory = df.memory_usage(deep=True).sum()
@@ -302,8 +302,8 @@ def memory_usage_optimizer(df: pd.DataFrame) -> pd.DataFrame:
             if df[col].nunique() / len(df) < 0.5:  # Less than 50% unique values
                 df[col] = df[col].astype('category')
         
-        optimized_memory = df.memory_usage(deep=True).sum()
-        memory_saved = original_memory - optimized_memory
+        final_memory = df.memory_usage(deep=True).sum()
+        memory_saved = original_memory - final_memory
         
         logger.info(f"Memory optimization: {memory_saved / 1024**2:.2f} MB saved")
         
@@ -322,7 +322,7 @@ def optimize_dataframe_chunk(df: pd.DataFrame, chunk_name: str = "chunk") -> pd.
         chunk_name: Name for logging
         
     Returns:
-        Optimized DataFrame
+        DataFrame with optimized memory usage
     """
     try:
         original_memory = df.memory_usage(deep=True).sum() / 1024**2
@@ -336,11 +336,11 @@ def optimize_dataframe_chunk(df: pd.DataFrame, chunk_name: str = "chunk") -> pd.
             if col in df.columns:
                 df.drop(col, axis=1, inplace=True)
         
-        optimized_memory = df.memory_usage(deep=True).sum() / 1024**2
-        memory_saved = original_memory - optimized_memory
+        final_memory = df.memory_usage(deep=True).sum() / 1024**2
+        memory_saved = original_memory - final_memory
         
         logger.info(f"{chunk_name} optimization: {memory_saved:.2f} MB saved "
-                   f"({original_memory:.2f} MB -> {optimized_memory:.2f} MB)")
+                   f"({original_memory:.2f} MB -> {final_memory:.2f} MB)")
         
         return df
         

@@ -57,7 +57,7 @@ api/
 │   └── setup_database.py          # Database setup script
 │
 ├── logs/                           # Log files
-│   └── fraud_detection_optimized.log
+│   └── fraud_detection.log
 │
 ├── notebooks/                      # Jupyter notebooks
 │   └── Project_FD 0.ipynb         # Project notebook
@@ -137,7 +137,7 @@ Utility scripts for running and managing the application.
 
 ## 📝 Notes
 
-- The API is optimized for memory usage with streaming data processing
+- The API uses streaming data processing for efficient memory usage
 - All feature functions are now centralized in the `functions/` directory
 - Configuration is centralized in the `config/` directory
 - Scripts are organized in the `scripts/` directory for easy access
