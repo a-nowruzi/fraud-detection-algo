@@ -49,6 +49,7 @@ const Dashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      setError(null); // Clear any previous error
       const [statsData, modelData] = await Promise.all([
         apiService.getStats(),
         apiService.getModelInfo()

@@ -40,13 +40,6 @@ const ChartsGallery: React.FC = () => {
       category: 'جغرافیایی',
     },
     {
-      id: 'province-gender-fraud-percentage',
-      title: 'درصد تقلب بر اساس استان و جنسیت',
-      description: 'نمودار میله‌ای از درصد نسخه‌های تقلبی در هر استان بر حسب جنسیت',
-      icon: BarChart3,
-      category: 'تحلیلی',
-    },
-    {
       id: 'fraud-ratio-by-ins-cover',
       title: 'نسبت تقلب بر اساس پوشش بیمه',
       description: 'نمودار میله‌ای از نسبت نسخه‌های تقلبی بر اساس نوع پوشش بیمه',
