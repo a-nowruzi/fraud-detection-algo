@@ -21,10 +21,11 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DatabaseConfig:
     """Database configuration settings"""
-    host: str = os.getenv('DB_HOST', '91.107.174.199')
-    database: str = os.getenv('DB_NAME', 'testdb')
-    user: str = os.getenv('DB_USER', 'admin')
-    password: str = os.getenv('DB_PASSWORD', 'Alireza')
+    host: str = os.getenv('DB_HOST', '66.93.9.10')
+    # host: str = os.getenv('DB_HOST', 'localhost')
+    database: str = os.getenv('DB_NAME', 'app_db')
+    user: str = os.getenv('DB_USER', 'root')
+    password: str = os.getenv('DB_PASSWORD', 'Alireza7n')
     port: int = int(os.getenv('DB_PORT', '3306'))
     charset: str = 'utf8mb4'
     autocommit: bool = True
