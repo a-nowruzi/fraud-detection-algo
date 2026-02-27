@@ -1,0 +1,31 @@
+# Stage 1: Build stage
+FROM node:20-alpine AS build
+
+# تعیین پوشه کاری
+WORKDIR /app
+
+# کپی کردن فایل‌های وابستگی برای استفاده از سیستم کش داکر
+COPY package.json yarn.lock ./
+
+# نصب پکیج‌ها با Yarn
+RUN yarn install --frozen-lockfile
+
+# کپی کردن تمام فایل‌های پروژه
+COPY . .
+
+# ساخت نسخه نهایی پروژه
+RUN yarn build
+
+# Stage 2: Production stage
+FROM nginx:stable-alpine
+
+# کپی کردن فایل‌های ساخته شده از مرحله قبل به پوشه پیش‌فرض Nginx
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# کپی کردن تنظیمات سفارشی Nginx (در مرحله بعد توضیح می‌دم)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# باز کردن پورت ۸۰
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
