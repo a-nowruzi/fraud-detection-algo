@@ -20,7 +20,7 @@ RUN yarn build
 FROM nginx:stable-alpine
 
 # تغییر مسیر کپی به این آدرس:
-COPY --from=build /app/dist /etc/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 
 # کپی کردن تنظیمات
 COPY nginx.conf /etc/nginx/conf.d/default.conf
