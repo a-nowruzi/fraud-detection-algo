@@ -4,7 +4,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: DockerFile
     container_name: fraud-frontend
     restart: always
     ports:
