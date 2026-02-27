@@ -7,3 +7,5 @@ services:
       dockerfile: DockerFile
     container_name: fraud-frontend
     restart: always
+    ports:
+      - "3000:80"
